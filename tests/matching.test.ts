@@ -5,7 +5,7 @@ import type { Property, Requirement } from '../src/types/domain.ts';
 
 const property: Property = {id:'p1',title:'شقة السالمية',type:'apartment',area:'السالمية',monthlyRent:450,
   bedrooms:3,bathrooms:2,sizeSqm:120,furnishing:'unfurnished',description:'',privateNotes:'',paci:'',mapUrl:'',
-  latitude:null,longitude:null,ownerContactId:null,status:'available',createdAt:'',updatedAt:''};
+  latitude:null,longitude:null,paciNumberCount:null,activityType:null,ownerContactId:null,status:'available',createdAt:'',updatedAt:''};
 const requirement: Requirement = {id:'r1',contactId:'c1',areas:['السالمية'],propertyTypes:['apartment'],
   minRent:350,maxRent:500,minBedrooms:2,furnishing:'unfurnished',notes:'',active:true,createdAt:'',updatedAt:''};
 

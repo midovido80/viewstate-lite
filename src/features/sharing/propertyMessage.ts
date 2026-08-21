@@ -1,4 +1,5 @@
 import type { Property } from '@/types/domain';
+import {activityLabel} from '@/features/properties/propertyFields';
 
 const typeAr: Record<Property['type'], string> = {
   apartment:'شقة', villa:'فيلا', floor:'دور', building:'بناية', office:'مكتب', shop:'محل', warehouse:'مخزن', chalet:'شاليه'
@@ -15,6 +16,9 @@ export function createPropertyMessage(property: Property): string {
   ];
   if (property.bedrooms !== null) lines.push(`🛏️ ${property.bedrooms} غرف`);
   if (property.bathrooms !== null) lines.push(`🚿 ${property.bathrooms} حمام`);
+  if (property.paciNumberCount !== null) lines.push(`🔢 ${property.paciNumberCount} أرقام آلية`);
+  const activity=activityLabel(property.activityType);
+  if (activity) lines.push(`💼 النشاط: ${activity}`);
   if (property.sizeSqm !== null) lines.push(`📐 ${property.sizeSqm} م²`);
   lines.push(`🪑 ${furnishingAr[property.furnishing]}`);
   if (property.paci) lines.push(`📌 PACI: ${property.paci}`);
@@ -22,4 +26,3 @@ export function createPropertyMessage(property: Property): string {
   if (property.description) lines.push(`📝 ${property.description}`);
   return lines.join('\n');
 }
-

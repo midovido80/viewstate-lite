@@ -13,6 +13,14 @@ Date: 2026-08-21
 - Tenant requirements and bidirectional local matching
 - Share-ready Arabic property message with owner/private notes excluded
 - Text-record backup and transactional restore
+- Global search across people and properties
+- Add-person choice between manual entry and device import
+- Contact import starts with no contacts selected
+- Searchable Kuwait area picker grouped by all six governorates
+- Fast 1–10 room and bathroom selectors
+- Conditional commercial fields for floors and offices
+- Google Maps launch/link capture flow with current-location fallback
+- Additive SQLite v2 migration preserving existing records and v1 backup compatibility
 
 ## Verified
 
@@ -35,4 +43,3 @@ Date: 2026-08-21
 - WhatsApp and WhatsApp Business share-sheet behavior
 - Complete media backup archive
 - APK installation on Honor X9
-

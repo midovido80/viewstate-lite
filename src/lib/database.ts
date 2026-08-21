@@ -2,7 +2,7 @@ import * as SQLite from 'expo-sqlite';
 import type { Contact, Property, PropertyMedia, Requirement } from '@/types/domain';
 
 const DATABASE_NAME = 'viewstate-lite.db';
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 let databasePromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
 async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
@@ -79,6 +79,16 @@ async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
       COMMIT;
     `);
   }
+  if (version < 2) {
+    await db.execAsync(`
+      BEGIN;
+      ALTER TABLE properties ADD COLUMN paci_number_count INTEGER;
+      ALTER TABLE properties ADD COLUMN activity_type TEXT
+        CHECK(activity_type IS NULL OR activity_type IN ('company_headquarters','educational_institute','health_institute','law_office','other'));
+      PRAGMA user_version = 2;
+      COMMIT;
+    `);
+  }
 }
 
 export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
@@ -102,6 +112,7 @@ function propertyFromRow(row: any): Property {
     sizeSqm: row.size_sqm, furnishing: row.furnishing, description: row.description,
     privateNotes: row.private_notes, paci: row.paci, mapUrl: row.map_url,
     latitude: row.latitude, longitude: row.longitude, ownerContactId: row.owner_contact_id,
+    paciNumberCount: row.paci_number_count ?? null, activityType: row.activity_type ?? null,
     status: row.status, createdAt: row.created_at, updatedAt: row.updated_at };
 }
 
@@ -156,16 +167,17 @@ export const propertiesRepository = {
   async upsert(value: Property): Promise<void> {
     const db = await getDatabase();
     await db.runAsync(`INSERT INTO properties(id,title,type,area,monthly_rent,bedrooms,bathrooms,size_sqm,
-      furnishing,description,private_notes,paci,map_url,latitude,longitude,owner_contact_id,status,created_at,updated_at)
-      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,
+      furnishing,description,private_notes,paci,map_url,latitude,longitude,paci_number_count,activity_type,owner_contact_id,status,created_at,updated_at)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,
       type=excluded.type,area=excluded.area,monthly_rent=excluded.monthly_rent,bedrooms=excluded.bedrooms,
       bathrooms=excluded.bathrooms,size_sqm=excluded.size_sqm,furnishing=excluded.furnishing,
       description=excluded.description,private_notes=excluded.private_notes,paci=excluded.paci,
       map_url=excluded.map_url,latitude=excluded.latitude,longitude=excluded.longitude,
+      paci_number_count=excluded.paci_number_count,activity_type=excluded.activity_type,
       owner_contact_id=excluded.owner_contact_id,status=excluded.status,updated_at=excluded.updated_at`,
       value.id,value.title,value.type,value.area,value.monthlyRent,value.bedrooms,value.bathrooms,value.sizeSqm,
       value.furnishing,value.description,value.privateNotes,value.paci,value.mapUrl,value.latitude,value.longitude,
-      value.ownerContactId,value.status,value.createdAt,value.updatedAt);
+      value.paciNumberCount,value.activityType,value.ownerContactId,value.status,value.createdAt,value.updatedAt);
   },
   async media(propertyId: string): Promise<PropertyMedia[]> {
     const db = await getDatabase();
@@ -177,6 +189,28 @@ export const propertiesRepository = {
     const db = await getDatabase();
     await db.runAsync('INSERT INTO property_media(id,property_id,uri,kind,sort_order,created_at) VALUES(?,?,?,?,?,?)',
       media.id,media.propertyId,media.uri,media.kind,media.sortOrder,media.createdAt);
+  },
+};
+
+export interface GlobalSearchResults {
+  contacts: Contact[];
+  properties: Property[];
+}
+
+export const globalSearchRepository = {
+  async search(query: string): Promise<GlobalSearchResults> {
+    const trimmed=query.trim();
+    if (!trimmed) return {contacts:[],properties:[]};
+    const db=await getDatabase();
+    const pattern=`%${trimmed}%`;
+    const [contactRows,propertyRows]=await Promise.all([
+      db.getAllAsync<any>(`SELECT * FROM contacts
+        WHERE name LIKE ? OR phone LIKE ? OR notes LIKE ? ORDER BY updated_at DESC LIMIT 50`,pattern,pattern,pattern),
+      db.getAllAsync<any>(`SELECT * FROM properties
+        WHERE title LIKE ? OR area LIKE ? OR paci LIKE ? OR description LIKE ?
+        ORDER BY updated_at DESC LIMIT 50`,pattern,pattern,pattern,pattern),
+    ]);
+    return {contacts:contactRows.map(contactFromRow),properties:propertyRows.map(propertyFromRow)};
   },
 };
 
@@ -231,7 +265,7 @@ export async function exportSnapshot(): Promise<string> {
 
 export async function restoreSnapshot(json: string): Promise<void> {
   const snapshot = JSON.parse(json) as any;
-  if (snapshot?.format !== 'viewstate-lite' || snapshot?.version !== SCHEMA_VERSION || !snapshot?.data) {
+  if (snapshot?.format !== 'viewstate-lite' || ![1,SCHEMA_VERSION].includes(snapshot?.version) || !snapshot?.data) {
     throw new Error('Unsupported backup format');
   }
   const { contacts = [], requirements = [], properties = [], media = [] } = snapshot.data;
@@ -242,11 +276,13 @@ export async function restoreSnapshot(json: string): Promise<void> {
       VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,phone=excluded.phone,role=excluded.role,
       notes=excluded.notes,source=excluded.source,updated_at=excluded.updated_at`, row.id,row.name,row.phone,row.role,row.notes,row.source,row.created_at,row.updated_at);
     for (const row of properties) await db.runAsync(`INSERT INTO properties(id,title,type,area,monthly_rent,bedrooms,bathrooms,size_sqm,furnishing,description,private_notes,
-      paci,map_url,latitude,longitude,owner_contact_id,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
+      paci,map_url,latitude,longitude,paci_number_count,activity_type,owner_contact_id,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
       title=excluded.title,type=excluded.type,area=excluded.area,monthly_rent=excluded.monthly_rent,bedrooms=excluded.bedrooms,bathrooms=excluded.bathrooms,
       size_sqm=excluded.size_sqm,furnishing=excluded.furnishing,description=excluded.description,private_notes=excluded.private_notes,paci=excluded.paci,map_url=excluded.map_url,
-      latitude=excluded.latitude,longitude=excluded.longitude,owner_contact_id=excluded.owner_contact_id,status=excluded.status,updated_at=excluded.updated_at`,
-      row.id,row.title,row.type,row.area,row.monthly_rent,row.bedrooms,row.bathrooms,row.size_sqm,row.furnishing,row.description,row.private_notes,row.paci,row.map_url,row.latitude,row.longitude,row.owner_contact_id,row.status,row.created_at,row.updated_at);
+      latitude=excluded.latitude,longitude=excluded.longitude,paci_number_count=excluded.paci_number_count,activity_type=excluded.activity_type,
+      owner_contact_id=excluded.owner_contact_id,status=excluded.status,updated_at=excluded.updated_at`,
+      row.id,row.title,row.type,row.area,row.monthly_rent,row.bedrooms,row.bathrooms,row.size_sqm,row.furnishing,row.description,row.private_notes,row.paci,row.map_url,row.latitude,row.longitude,
+      row.paci_number_count??null,row.activity_type??null,row.owner_contact_id,row.status,row.created_at,row.updated_at);
     for (const row of requirements) await db.runAsync(`INSERT INTO requirements(id,contact_id,areas_json,property_types_json,min_rent,max_rent,min_bedrooms,furnishing,notes,active,created_at,updated_at)
       VALUES(?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET areas_json=excluded.areas_json,property_types_json=excluded.property_types_json,min_rent=excluded.min_rent,max_rent=excluded.max_rent,
       min_bedrooms=excluded.min_bedrooms,furnishing=excluded.furnishing,notes=excluded.notes,active=excluded.active,updated_at=excluded.updated_at`, row.id,row.contact_id,row.areas_json,row.property_types_json,

@@ -17,6 +17,12 @@ export type PropertyType =
 
 export type Furnishing = 'furnished' | 'semi_furnished' | 'unfurnished' | 'any';
 export type PropertyStatus = 'available' | 'rented' | 'paused';
+export type ActivityType =
+  | 'company_headquarters'
+  | 'educational_institute'
+  | 'health_institute'
+  | 'law_office'
+  | 'other';
 
 export interface Contact {
   id: string;
@@ -60,6 +66,8 @@ export interface Property {
   mapUrl: string;
   latitude: number | null;
   longitude: number | null;
+  paciNumberCount: number | null;
+  activityType: ActivityType | null;
   ownerContactId: string | null;
   status: PropertyStatus;
   createdAt: string;
@@ -82,4 +90,3 @@ export interface MatchResult {
   reasons: string[];
   blockers: string[];
 }
-
