@@ -36,10 +36,10 @@ export default function PropertyForm(){const {id,offeredByContactId}=useLocalSea
   const [locationOpen,setLocationOpen]=useState(false);const [locationDraft,setLocationDraft]=useState('');
   const commercial=usesCommercialDetails(form.type);
 
-  useEffect(()=>{void (async()=>{if(id){const p=await propertiesRepository.get(id);if(p)setForm({title:p.title,type:p.type,area:p.area,
+  useEffect(()=>{void (async()=>{if(id){const p=await propertiesRepository.get(id);if(p){setForm({title:p.title,type:p.type,area:p.area,
     monthlyRent:String(p.monthlyRent),bedrooms:p.bedrooms,bathrooms:p.bathrooms,sizeSqm:p.sizeSqm?.toString()??'',furnishing:p.furnishing,
     description:p.description,privateNotes:p.privateNotes,paci:p.paci,mapUrl:p.mapUrl,latitude:p.latitude,longitude:p.longitude,
-    paciNumberCount:p.paciNumberCount,activityType:p.activityType,status:p.status});setSourceContactId(p.offeredByContactId);setOwnerContactId(p.ownerContactId)}else{const draft=await draftsRepository.load<Partial<Draft>>(key);
+    paciNumberCount:p.paciNumberCount,activityType:p.activityType,status:p.status});setSourceContactId(p.offeredByContactId);setOwnerContactId(p.ownerContactId)}}else{const draft=await draftsRepository.load<Partial<Draft>>(key);
       if(draft)setForm({...empty,...draft,bedrooms:toOptionalNumber(draft.bedrooms),bathrooms:toOptionalNumber(draft.bathrooms),
         paciNumberCount:toOptionalNumber(draft.paciNumberCount)})}setReady(true)})()},[id,key]);
   useEffect(()=>{if(ready)void draftsRepository.save(key,form)},[form,key,ready]);
