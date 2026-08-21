@@ -43,6 +43,7 @@ export interface Requirement {
   minRent: number | null;
   maxRent: number | null;
   minBedrooms: number | null;
+  minBathrooms: number | null;
   furnishing: Furnishing;
   notes: string;
   active: boolean;
@@ -69,6 +70,7 @@ export interface Property {
   paciNumberCount: number | null;
   activityType: ActivityType | null;
   ownerContactId: string | null;
+  offeredByContactId: string | null;
   status: PropertyStatus;
   createdAt: string;
   updatedAt: string;
@@ -87,6 +89,16 @@ export interface MatchResult {
   propertyId: string;
   requirementId: string;
   score: number;
-  reasons: string[];
-  blockers: string[];
+  criteria: MatchCriterion[];
+  evaluatedCriteria: number;
+  eligible: boolean;
+}
+
+export interface MatchCriterion {
+  field: 'area' | 'type' | 'rent' | 'bedrooms' | 'bathrooms';
+  label: string;
+  weight: number;
+  earned: number;
+  state: 'matched' | 'partial' | 'missed' | 'not_specified';
+  explanation: string;
 }

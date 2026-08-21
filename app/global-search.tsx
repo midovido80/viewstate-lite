@@ -24,7 +24,7 @@ export default function GlobalSearch(){const [query,setQuery]=useState('');const
     <FlatList data={rows} keyExtractor={item=>`${item.kind}:${item.id}`} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.list}
       ListEmptyComponent={<Text style={styles.empty}>{empty}</Text>}
       renderItem={({item})=>item.kind==='heading'?<Text style={styles.heading}>{item.label}</Text>:item.kind==='contact'?
-        <Pressable onPress={()=>router.push({pathname:'/contact-form',params:{id:item.id}})} style={styles.card}>
+        <Pressable onPress={()=>router.push({pathname:'/contact-detail',params:{id:item.id}})} style={styles.card}>
           <View style={styles.copy}><Text style={styles.title}>{item.name}</Text><Text style={styles.sub}>{item.phone}</Text></View><Text style={styles.badge}>{roleLabels[item.role]}</Text>
         </Pressable>:
         <Pressable onPress={()=>router.push({pathname:'/property-detail',params:{id:item.id}})} style={styles.card}>

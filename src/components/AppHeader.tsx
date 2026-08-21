@@ -11,7 +11,7 @@ export function AppHeader({title,query,onQueryChange}:{title:string;query?:strin
     {onQueryChange ? <View style={[styles.search,{flexDirection:isRTL?'row-reverse':'row'}]}>
       <Ionicons name="search" size={20} color={colors.blue}/>
       <TextInput value={query} onChangeText={onQueryChange} placeholder={t('search')}
-        autoFocus returnKeyType="search" placeholderTextColor={colors.muted} style={[styles.input,{textAlign:isRTL?'right':'left'}]}/>
+        autoFocus returnKeyType="search" placeholderTextColor={colors.muted} selectionColor={colors.blue} cursorColor={colors.blue} style={[styles.input,{textAlign:isRTL?'right':'left'}]}/>
     </View> : <Pressable accessibilityRole="button" onPress={()=>router.push('/global-search')}
       style={[styles.search,{flexDirection:isRTL?'row-reverse':'row'}]}>
       <Ionicons name="search" size={20} color={colors.blue}/>

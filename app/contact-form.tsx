@@ -1,8 +1,9 @@
 import {useEffect,useState} from 'react';
-import {Alert,Pressable,ScrollView,StyleSheet,Text,View} from 'react-native';
+import {Alert,Pressable,StyleSheet,Text,View} from 'react-native';
 import {router,useLocalSearchParams} from 'expo-router';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {AppHeader} from '@/components/AppHeader';
+import {KeyboardAwareScrollViewCompat} from '@/components/KeyboardAwareScrollViewCompat';
 import {FormField} from '@/components/FormField';import {PrimaryButton} from '@/components/PrimaryButton';
 import {contactsRepository,draftsRepository} from '@/lib/database';import {createId} from '@/lib/id';import {normalizeKuwaitPhone} from '@/lib/phone';
 import type {ContactRole} from '@/types/domain';import {colors,radius,spacing} from '@/theme/tokens';
@@ -13,15 +14,17 @@ export default function ContactForm(){const {id}=useLocalSearchParams<{id?:strin
     else {const draft=await draftsRepository.load<Draft>(key);if(draft)setForm(draft)}setReady(true)})()},[id,key]);
   useEffect(()=>{if(ready)draftsRepository.save(key,form)},[form,key,ready]);
   const save=async()=>{const phone=normalizeKuwaitPhone(form.phone);if(!form.name.trim()||!phone){Alert.alert('بيانات غير مكتملة','اكتب الاسم ورقم كويتي صحيح.');return}
-    const duplicate=await contactsRepository.findByPhone(phone);if(duplicate&&duplicate.id!==id){Alert.alert('رقم مسجل','هذا الرقم موجود بالفعل.');return}
-    const now=new Date().toISOString();await contactsRepository.upsert({id:id??createId('contact'),name:form.name.trim(),phone,role:form.role,notes:form.notes.trim(),
-      source:'manual',createdAt:duplicate?.createdAt??now,updatedAt:now});await draftsRepository.clear(key);router.back()};
-  return <SafeAreaView style={styles.page} edges={['top']}><AppHeader title={id?'تعديل الشخص':'إضافة شخص يدويًا'}/><ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    const duplicate=await contactsRepository.findByPhone(phone);if(duplicate&&duplicate.id!==id){Alert.alert('رقم مسجل بالفعل','لن ننشئ نسخة مكررة من الشخص.',[
+      {text:'إلغاء',style:'cancel'},{text:'فتح السجل الموجود',onPress:()=>router.replace({pathname:'/contact-detail',params:{id:duplicate.id}})},
+    ]);return}
+    const contactId=id??createId('contact');const now=new Date().toISOString();await contactsRepository.upsert({id:contactId,name:form.name.trim(),phone,role:form.role,notes:form.notes.trim(),
+      source:'manual',createdAt:duplicate?.createdAt??now,updatedAt:now});await draftsRepository.clear(key);router.replace({pathname:'/contact-detail',params:{id:contactId}})};
+  return <SafeAreaView style={styles.page} edges={['top']}><AppHeader title={id?'تعديل الشخص':'إضافة شخص يدويًا'}/><KeyboardAwareScrollViewCompat contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
     <FormField label="الاسم" value={form.name} onChangeText={name=>setForm({...form,name})}/><FormField label="رقم الهاتف" value={form.phone}
       keyboardType="phone-pad" onChangeText={phone=>setForm({...form,phone})}/><Text style={styles.label}>التصنيف</Text><View style={styles.roles}>{roles.map(([value,label])=><Pressable
         key={value} onPress={()=>setForm({...form,role:value})} style={[styles.chip,form.role===value&&styles.active]}><Text style={form.role===value&&styles.activeText}>{label}</Text></Pressable>)}</View>
     <FormField label="ملاحظات" value={form.notes} multiline onChangeText={notes=>setForm({...form,notes})}/><PrimaryButton title="حفظ" onPress={save}/>
-    {form.role==='tenant'&&id&&<PrimaryButton title="إضافة متطلبات البحث" onPress={()=>router.push({pathname:'/requirement-form',params:{contactId:id}})}/>}</ScrollView></SafeAreaView>}
-const styles=StyleSheet.create({page:{flex:1,backgroundColor:colors.background},content:{padding:spacing.md,gap:spacing.md},
-  label:{fontSize:15,fontWeight:'600',textAlign:'right'},roles:{flexDirection:'row-reverse',flexWrap:'wrap',gap:spacing.sm},chip:{borderWidth:1,borderColor:colors.border,
-  paddingHorizontal:spacing.md,paddingVertical:10,borderRadius:radius.lg},active:{backgroundColor:colors.blue,borderColor:colors.blue},activeText:{color:'white',fontWeight:'700'}});
+    </KeyboardAwareScrollViewCompat></SafeAreaView>}
+const styles=StyleSheet.create({page:{flex:1,backgroundColor:colors.background},content:{padding:spacing.md,gap:spacing.md,paddingBottom:spacing.xl*2},
+  label:{fontSize:15,fontWeight:'600',textAlign:'right'},roles:{flexDirection:'row-reverse',flexWrap:'wrap',gap:spacing.sm},chip:{width:'48%',minHeight:56,borderWidth:1,borderColor:colors.border,
+  paddingHorizontal:spacing.sm,paddingVertical:10,borderRadius:radius.lg,alignItems:'center',justifyContent:'center',backgroundColor:'white'},active:{backgroundColor:colors.blue,borderColor:colors.blue},activeText:{color:'white',fontWeight:'700'}});

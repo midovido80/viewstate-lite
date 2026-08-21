@@ -16,7 +16,7 @@ export default function ContactsScreen(){const {t,isRTL}=useI18n();const [items,
       <PrimaryButton title={t('importContacts')} onPress={()=>router.push('/contact-import')}/></View>
     <FlatList data={items} keyExtractor={x=>x.id} contentContainerStyle={styles.list}
       ListEmptyComponent={<Text style={styles.empty}>{t('noContacts')}</Text>}
-      renderItem={({item})=><Pressable onPress={()=>router.push({pathname:'/contact-form',params:{id:item.id}})} style={styles.card}>
+      renderItem={({item})=><Pressable onPress={()=>router.push({pathname:'/contact-detail',params:{id:item.id}})} style={styles.card}>
         <View style={{flex:1}}><Text style={[styles.name,{textAlign:isRTL?'right':'left'}]}>{item.name}</Text>
           <Text style={[styles.phone,{textAlign:isRTL?'right':'left'}]}>{item.phone}</Text></View>
         <Text style={styles.badge}>{labels[item.role]}</Text></Pressable>}/>

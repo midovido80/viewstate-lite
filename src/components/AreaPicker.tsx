@@ -31,7 +31,8 @@ export function AreaPicker({value,onChange}:{value:string;onChange:(area:string)
         <View style={styles.search}>
           <Ionicons name="search" size={21} color={colors.muted}/>
           <TextInput autoFocus value={query} onChangeText={setQuery} placeholder="اكتب أول حرفين مثل: سل"
-            placeholderTextColor={colors.muted} style={styles.searchInput}/>
+            placeholderTextColor={colors.muted} selectionColor={colors.blue} cursorColor={colors.blue}
+            style={styles.searchInput}/>
         </View>
         <SectionList sections={sections} keyExtractor={item=>item} keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.list}
@@ -55,7 +56,7 @@ const styles=StyleSheet.create({
   modalHeader:{backgroundColor:colors.blue,padding:spacing.md,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},
   modalTitle:{color:'white',fontSize:21,fontWeight:'700'},search:{margin:spacing.md,minHeight:50,borderWidth:1,borderColor:colors.border,
     borderRadius:radius.md,backgroundColor:'white',paddingHorizontal:spacing.md,flexDirection:'row-reverse',alignItems:'center',gap:spacing.sm},
-  searchInput:{flex:1,fontSize:16,textAlign:'right',color:colors.text},list:{paddingHorizontal:spacing.md,paddingBottom:spacing.xl},
+  searchInput:{flex:1,fontSize:16,textAlign:'right',color:'#1A1A1A',backgroundColor:'#FFFFFF'},list:{paddingHorizontal:spacing.md,paddingBottom:spacing.xl},
   section:{backgroundColor:colors.surface,color:colors.red,fontSize:17,fontWeight:'800',textAlign:'right',padding:spacing.sm,
     marginTop:spacing.sm,borderRadius:radius.sm},row:{minHeight:50,borderBottomWidth:1,borderBottomColor:colors.border,
     flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:spacing.sm},

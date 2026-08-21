@@ -2,7 +2,7 @@ import * as SQLite from 'expo-sqlite';
 import type { Contact, Property, PropertyMedia, Requirement } from '@/types/domain';
 
 const DATABASE_NAME = 'viewstate-lite.db';
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 let databasePromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
 async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
@@ -89,6 +89,17 @@ async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
       COMMIT;
     `);
   }
+  if (version < 3) {
+    await db.execAsync(`
+      BEGIN;
+      ALTER TABLE requirements ADD COLUMN min_bathrooms INTEGER;
+      ALTER TABLE properties ADD COLUMN offered_by_contact_id TEXT REFERENCES contacts(id) ON DELETE SET NULL;
+      CREATE INDEX IF NOT EXISTS idx_properties_offered_by ON properties(offered_by_contact_id);
+      CREATE INDEX IF NOT EXISTS idx_requirements_match ON requirements(active,min_rent,max_rent,min_bedrooms,min_bathrooms);
+      PRAGMA user_version = 3;
+      COMMIT;
+    `);
+  }
 }
 
 export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
@@ -112,6 +123,7 @@ function propertyFromRow(row: any): Property {
     sizeSqm: row.size_sqm, furnishing: row.furnishing, description: row.description,
     privateNotes: row.private_notes, paci: row.paci, mapUrl: row.map_url,
     latitude: row.latitude, longitude: row.longitude, ownerContactId: row.owner_contact_id,
+    offeredByContactId: row.offered_by_contact_id ?? null,
     paciNumberCount: row.paci_number_count ?? null, activityType: row.activity_type ?? null,
     status: row.status, createdAt: row.created_at, updatedAt: row.updated_at };
 }
@@ -119,7 +131,7 @@ function propertyFromRow(row: any): Property {
 function requirementFromRow(row: any): Requirement {
   return { id: row.id, contactId: row.contact_id, areas: JSON.parse(row.areas_json),
     propertyTypes: JSON.parse(row.property_types_json), minRent: row.min_rent,
-    maxRent: row.max_rent, minBedrooms: row.min_bedrooms, furnishing: row.furnishing,
+    maxRent: row.max_rent, minBedrooms: row.min_bedrooms, minBathrooms: row.min_bathrooms ?? null, furnishing: row.furnishing,
     notes: row.notes, active: Boolean(row.active), createdAt: row.created_at,
     updatedAt: row.updated_at };
 }
@@ -149,6 +161,19 @@ export const contactsRepository = {
     const row = await db.getFirstAsync<any>('SELECT * FROM contacts WHERE phone = ?', phone);
     return row ? contactFromRow(row) : null;
   },
+  async importMany(values: Contact[]): Promise<void> {
+    if (!values.length) return;
+    const db = await getDatabase();
+    await db.withTransactionAsync(async () => {
+      for (const value of values) {
+        await db.runAsync(`INSERT INTO contacts(id,name,phone,role,notes,source,created_at,updated_at)
+          VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(phone) DO UPDATE SET
+          name=CASE WHEN contacts.name='' THEN excluded.name ELSE contacts.name END,
+          notes=CASE WHEN contacts.notes='' THEN excluded.notes ELSE contacts.notes END,
+          updated_at=excluded.updated_at`, value.id,value.name,value.phone,value.role,value.notes,value.source,value.createdAt,value.updatedAt);
+      }
+    });
+  },
 };
 
 export const propertiesRepository = {
@@ -164,20 +189,25 @@ export const propertiesRepository = {
     const row = await db.getFirstAsync<any>('SELECT * FROM properties WHERE id = ?', id);
     return row ? propertyFromRow(row) : null;
   },
+  async forOfferedBy(contactId: string): Promise<Property[]> {
+    const db = await getDatabase();
+    const rows = await db.getAllAsync<any>('SELECT * FROM properties WHERE offered_by_contact_id=? ORDER BY updated_at DESC', contactId);
+    return rows.map(propertyFromRow);
+  },
   async upsert(value: Property): Promise<void> {
     const db = await getDatabase();
     await db.runAsync(`INSERT INTO properties(id,title,type,area,monthly_rent,bedrooms,bathrooms,size_sqm,
-      furnishing,description,private_notes,paci,map_url,latitude,longitude,paci_number_count,activity_type,owner_contact_id,status,created_at,updated_at)
-      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,
+      furnishing,description,private_notes,paci,map_url,latitude,longitude,paci_number_count,activity_type,owner_contact_id,offered_by_contact_id,status,created_at,updated_at)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,
       type=excluded.type,area=excluded.area,monthly_rent=excluded.monthly_rent,bedrooms=excluded.bedrooms,
       bathrooms=excluded.bathrooms,size_sqm=excluded.size_sqm,furnishing=excluded.furnishing,
       description=excluded.description,private_notes=excluded.private_notes,paci=excluded.paci,
       map_url=excluded.map_url,latitude=excluded.latitude,longitude=excluded.longitude,
       paci_number_count=excluded.paci_number_count,activity_type=excluded.activity_type,
-      owner_contact_id=excluded.owner_contact_id,status=excluded.status,updated_at=excluded.updated_at`,
+      owner_contact_id=excluded.owner_contact_id,offered_by_contact_id=excluded.offered_by_contact_id,status=excluded.status,updated_at=excluded.updated_at`,
       value.id,value.title,value.type,value.area,value.monthlyRent,value.bedrooms,value.bathrooms,value.sizeSqm,
       value.furnishing,value.description,value.privateNotes,value.paci,value.mapUrl,value.latitude,value.longitude,
-      value.paciNumberCount,value.activityType,value.ownerContactId,value.status,value.createdAt,value.updatedAt);
+      value.paciNumberCount,value.activityType,value.ownerContactId,value.offeredByContactId,value.status,value.createdAt,value.updatedAt);
   },
   async media(propertyId: string): Promise<PropertyMedia[]> {
     const db = await getDatabase();
@@ -225,15 +255,20 @@ export const requirementsRepository = {
     const rows = await db.getAllAsync<any>('SELECT * FROM requirements WHERE contact_id=? ORDER BY updated_at DESC', contactId);
     return rows.map(requirementFromRow);
   },
+  async get(id: string): Promise<Requirement | null> {
+    const db = await getDatabase();
+    const row = await db.getFirstAsync<any>('SELECT * FROM requirements WHERE id=?', id);
+    return row ? requirementFromRow(row) : null;
+  },
   async upsert(value: Requirement): Promise<void> {
     const db = await getDatabase();
     await db.runAsync(`INSERT INTO requirements(id,contact_id,areas_json,property_types_json,min_rent,max_rent,
-      min_bedrooms,furnishing,notes,active,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
+      min_bedrooms,min_bathrooms,furnishing,notes,active,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
       ON CONFLICT(id) DO UPDATE SET areas_json=excluded.areas_json,property_types_json=excluded.property_types_json,
       min_rent=excluded.min_rent,max_rent=excluded.max_rent,min_bedrooms=excluded.min_bedrooms,
-      furnishing=excluded.furnishing,notes=excluded.notes,active=excluded.active,updated_at=excluded.updated_at`,
+      min_bathrooms=excluded.min_bathrooms,furnishing=excluded.furnishing,notes=excluded.notes,active=excluded.active,updated_at=excluded.updated_at`,
       value.id,value.contactId,JSON.stringify(value.areas),JSON.stringify(value.propertyTypes),value.minRent,
-      value.maxRent,value.minBedrooms,value.furnishing,value.notes,value.active?1:0,value.createdAt,value.updatedAt);
+      value.maxRent,value.minBedrooms,value.minBathrooms,value.furnishing,value.notes,value.active?1:0,value.createdAt,value.updatedAt);
   },
 };
 
@@ -265,7 +300,7 @@ export async function exportSnapshot(): Promise<string> {
 
 export async function restoreSnapshot(json: string): Promise<void> {
   const snapshot = JSON.parse(json) as any;
-  if (snapshot?.format !== 'viewstate-lite' || ![1,SCHEMA_VERSION].includes(snapshot?.version) || !snapshot?.data) {
+  if (snapshot?.format !== 'viewstate-lite' || ![1,2,SCHEMA_VERSION].includes(snapshot?.version) || !snapshot?.data) {
     throw new Error('Unsupported backup format');
   }
   const { contacts = [], requirements = [], properties = [], media = [] } = snapshot.data;
@@ -276,17 +311,17 @@ export async function restoreSnapshot(json: string): Promise<void> {
       VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,phone=excluded.phone,role=excluded.role,
       notes=excluded.notes,source=excluded.source,updated_at=excluded.updated_at`, row.id,row.name,row.phone,row.role,row.notes,row.source,row.created_at,row.updated_at);
     for (const row of properties) await db.runAsync(`INSERT INTO properties(id,title,type,area,monthly_rent,bedrooms,bathrooms,size_sqm,furnishing,description,private_notes,
-      paci,map_url,latitude,longitude,paci_number_count,activity_type,owner_contact_id,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
+      paci,map_url,latitude,longitude,paci_number_count,activity_type,owner_contact_id,offered_by_contact_id,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
       title=excluded.title,type=excluded.type,area=excluded.area,monthly_rent=excluded.monthly_rent,bedrooms=excluded.bedrooms,bathrooms=excluded.bathrooms,
       size_sqm=excluded.size_sqm,furnishing=excluded.furnishing,description=excluded.description,private_notes=excluded.private_notes,paci=excluded.paci,map_url=excluded.map_url,
       latitude=excluded.latitude,longitude=excluded.longitude,paci_number_count=excluded.paci_number_count,activity_type=excluded.activity_type,
-      owner_contact_id=excluded.owner_contact_id,status=excluded.status,updated_at=excluded.updated_at`,
+      owner_contact_id=excluded.owner_contact_id,offered_by_contact_id=excluded.offered_by_contact_id,status=excluded.status,updated_at=excluded.updated_at`,
       row.id,row.title,row.type,row.area,row.monthly_rent,row.bedrooms,row.bathrooms,row.size_sqm,row.furnishing,row.description,row.private_notes,row.paci,row.map_url,row.latitude,row.longitude,
-      row.paci_number_count??null,row.activity_type??null,row.owner_contact_id,row.status,row.created_at,row.updated_at);
-    for (const row of requirements) await db.runAsync(`INSERT INTO requirements(id,contact_id,areas_json,property_types_json,min_rent,max_rent,min_bedrooms,furnishing,notes,active,created_at,updated_at)
-      VALUES(?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET areas_json=excluded.areas_json,property_types_json=excluded.property_types_json,min_rent=excluded.min_rent,max_rent=excluded.max_rent,
-      min_bedrooms=excluded.min_bedrooms,furnishing=excluded.furnishing,notes=excluded.notes,active=excluded.active,updated_at=excluded.updated_at`, row.id,row.contact_id,row.areas_json,row.property_types_json,
-      row.min_rent,row.max_rent,row.min_bedrooms,row.furnishing,row.notes,row.active,row.created_at,row.updated_at);
+      row.paci_number_count??null,row.activity_type??null,row.owner_contact_id,row.offered_by_contact_id??null,row.status,row.created_at,row.updated_at);
+    for (const row of requirements) await db.runAsync(`INSERT INTO requirements(id,contact_id,areas_json,property_types_json,min_rent,max_rent,min_bedrooms,min_bathrooms,furnishing,notes,active,created_at,updated_at)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET areas_json=excluded.areas_json,property_types_json=excluded.property_types_json,min_rent=excluded.min_rent,max_rent=excluded.max_rent,
+      min_bedrooms=excluded.min_bedrooms,min_bathrooms=excluded.min_bathrooms,furnishing=excluded.furnishing,notes=excluded.notes,active=excluded.active,updated_at=excluded.updated_at`, row.id,row.contact_id,row.areas_json,row.property_types_json,
+      row.min_rent,row.max_rent,row.min_bedrooms,row.min_bathrooms??null,row.furnishing,row.notes,row.active,row.created_at,row.updated_at);
     for (const row of media) await db.runAsync(`INSERT INTO property_media(id,property_id,uri,kind,sort_order,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING`,
       row.id,row.property_id,row.uri,row.kind,row.sort_order,row.created_at);
   });

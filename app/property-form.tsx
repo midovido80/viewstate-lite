@@ -1,5 +1,5 @@
 import {useEffect,useState} from 'react';
-import {Alert,Linking,Modal,Pressable,ScrollView,StyleSheet,Text,View} from 'react-native';
+import {Alert,Linking,Modal,Pressable,StyleSheet,Text,View} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import {router,useLocalSearchParams} from 'expo-router';
@@ -10,6 +10,7 @@ import {ChoicePicker} from '@/components/ChoicePicker';
 import {FormField} from '@/components/FormField';
 import {NumberPicker} from '@/components/NumberPicker';
 import {PrimaryButton} from '@/components/PrimaryButton';
+import {KeyboardAwareScrollViewCompat} from '@/components/KeyboardAwareScrollViewCompat';
 import {draftsRepository,propertiesRepository} from '@/lib/database';
 import {createId} from '@/lib/id';
 import {persistMedia} from '@/features/properties/mediaStorage';
@@ -27,8 +28,10 @@ const empty:Draft={title:'',type:'apartment',area:'',monthlyRent:'',bedrooms:nul
   description:'',privateNotes:'',paci:'',mapUrl:'',latitude:null,longitude:null,paciNumberCount:null,activityType:null,status:'available'};
 const types:Array<[PropertyType,string]>=[['apartment','شقة'],['villa','فيلا'],['floor','دور'],['building','بناية'],['office','مكتب'],['shop','محل'],['warehouse','مخزن'],['chalet','شاليه']];
 
-export default function PropertyForm(){const {id}=useLocalSearchParams<{id?:string}>();const [propertyId]=useState(()=>id??createId('property'));
+export default function PropertyForm(){const {id,offeredByContactId}=useLocalSearchParams<{id?:string;offeredByContactId?:string}>();const [propertyId]=useState(()=>id??createId('property'));
   const key=id?`property:${id}`:'property:new';const [form,setForm]=useState<Draft>(empty);
+  const [sourceContactId,setSourceContactId]=useState<string|null>(offeredByContactId??null);
+  const [ownerContactId,setOwnerContactId]=useState<string|null>(null);
   const [pendingMedia,setPendingMedia]=useState<Array<{uri:string;kind:'image'|'video'}>>([]);const [ready,setReady]=useState(false);
   const [locationOpen,setLocationOpen]=useState(false);const [locationDraft,setLocationDraft]=useState('');
   const commercial=usesCommercialDetails(form.type);
@@ -36,7 +39,7 @@ export default function PropertyForm(){const {id}=useLocalSearchParams<{id?:stri
   useEffect(()=>{void (async()=>{if(id){const p=await propertiesRepository.get(id);if(p)setForm({title:p.title,type:p.type,area:p.area,
     monthlyRent:String(p.monthlyRent),bedrooms:p.bedrooms,bathrooms:p.bathrooms,sizeSqm:p.sizeSqm?.toString()??'',furnishing:p.furnishing,
     description:p.description,privateNotes:p.privateNotes,paci:p.paci,mapUrl:p.mapUrl,latitude:p.latitude,longitude:p.longitude,
-    paciNumberCount:p.paciNumberCount,activityType:p.activityType,status:p.status})}else{const draft=await draftsRepository.load<Partial<Draft>>(key);
+    paciNumberCount:p.paciNumberCount,activityType:p.activityType,status:p.status});setSourceContactId(p.offeredByContactId);setOwnerContactId(p.ownerContactId)}else{const draft=await draftsRepository.load<Partial<Draft>>(key);
       if(draft)setForm({...empty,...draft,bedrooms:toOptionalNumber(draft.bedrooms),bathrooms:toOptionalNumber(draft.bathrooms),
         paciNumberCount:toOptionalNumber(draft.paciNumberCount)})}setReady(true)})()},[id,key]);
   useEffect(()=>{if(ready)void draftsRepository.save(key,form)},[form,key,ready]);
@@ -59,13 +62,13 @@ export default function PropertyForm(){const {id}=useLocalSearchParams<{id?:stri
       bedrooms:commercial?null:form.bedrooms,bathrooms:form.bathrooms,sizeSqm:form.sizeSqm?Number(form.sizeSqm):null,furnishing:form.furnishing,
       description:form.description.trim(),privateNotes:form.privateNotes.trim(),paci:form.paci.trim(),mapUrl:form.mapUrl.trim(),latitude:form.latitude,
       longitude:form.longitude,paciNumberCount:commercial?form.paciNumberCount:null,activityType:commercial?form.activityType:null,
-      ownerContactId:null,status:form.status,createdAt:now,updatedAt:now});
+      ownerContactId,offeredByContactId:sourceContactId,status:form.status,createdAt:now,updatedAt:now});
     let order=0;for(const media of pendingMedia){const ext=media.uri.split('.').pop()??(media.kind==='video'?'mp4':'jpg');const uri=await persistMedia(media.uri,ext);
       await propertiesRepository.addMedia({id:createId('media'),propertyId,uri,kind:media.kind,sortOrder:order++,createdAt:now})}
     await draftsRepository.clear(key);router.replace({pathname:'/property-detail',params:{id:propertyId}})};
 
   return <SafeAreaView style={styles.page} edges={['top']}><AppHeader title={id?'تعديل العقار':'إضافة عقار للإيجار'}/>
-    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <KeyboardAwareScrollViewCompat contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={styles.label}>نوع العقار</Text><View style={styles.chips}>{types.map(([value,label])=><Pressable key={value}
         onPress={()=>setForm({...form,type:value})} style={[styles.chip,form.type===value&&styles.active]}><Text style={form.type===value&&styles.activeText}>{label}</Text></Pressable>)}</View>
       <FormField label="اسم مختصر للعقار (اختياري)" placeholder="مثال: شقة السالمية 12" value={form.title} onChangeText={title=>setForm({...form,title})}/>
@@ -89,7 +92,7 @@ export default function PropertyForm(){const {id}=useLocalSearchParams<{id?:stri
       <FormField label="الرقم الآلي PACI (اختياري)" value={form.paci} keyboardType="numeric" onChangeText={paci=>setForm({...form,paci})}/>
       <PrimaryButton title={form.mapUrl?'✓ تم اختيار الموقع — اضغط للتعديل':'📍 اختر الموقع على Google Maps'} onPress={openLocation}/>
       <PrimaryButton title={`إضافة صور أو فيديو (${pendingMedia.length})`} onPress={pick}/><PrimaryButton title="حفظ العقار" onPress={save}/>
-    </ScrollView>
+    </KeyboardAwareScrollViewCompat>
     <Modal visible={locationOpen} animationType="slide" onRequestClose={()=>setLocationOpen(false)}>
       <SafeAreaView style={styles.locationPage}>
         <View style={styles.locationHeader}><Pressable onPress={()=>setLocationOpen(false)}><Text style={styles.cancel}>إلغاء</Text></Pressable><Text style={styles.locationTitle}>اختيار موقع العقار</Text></View>
