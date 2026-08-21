@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "ViewState Lite",
+    "slug": "viewstate-lite",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "viewstatelite",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "android": {
+      "package": "com.viewstate.lite",
+      "versionCode": 1,
+      "permissions": ["READ_CONTACTS", "ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      ["expo-contacts", {"contactsPermission": "السماح لـ ViewState Lite باستيراد العملاء من جهات الاتصال."}],
+      ["expo-image-picker", {"photosPermission": "السماح باختيار صور وفيديوهات العقارات."}],
+      ["expo-location", {"locationWhenInUsePermission": "السماح بإضافة موقع العقار الحالي."}]
+    ],
+    "experiments": {"typedRoutes": true}
+  }
+}
+
