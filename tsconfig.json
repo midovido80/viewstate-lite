@@ -4,8 +4,8 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {"@/*": ["src/*"]},
+    "allowImportingTsExtensions": true,
     "noUncheckedIndexedAccess": true
   },
   "include": ["app/**/*.tsx", "src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "expo-env.d.ts"]
 }
-
