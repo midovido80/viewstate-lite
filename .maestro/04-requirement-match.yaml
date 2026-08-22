@@ -2,7 +2,7 @@ appId: com.viewstate.lite
 ---
 - launchApp
 - tapOn: "الأشخاص"
-- tapOn: "QA Person Edited"
+- tapOn: "QA Person"
 - tapOn: "+ إضافة مطلوب"
 - tapOn: "شقة"
 - tapOn: "اختر منطقة أو أكثر"
@@ -27,6 +27,6 @@ appId: com.viewstate.lite
 - tapOn:
     id: "requirement-save-match"
 - assertVisible: "العقارات المطابقة"
-- assertVisible: "QA Salmiya Apartment Edited"
+- assertVisible: "QA Salmiya Apartment"
 - tapOn: "المطابقات"
-- assertVisible: "QA Salmiya Apartment Edited"
+- assertVisible: "QA Salmiya Apartment"

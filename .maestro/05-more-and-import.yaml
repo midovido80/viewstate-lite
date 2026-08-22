@@ -12,7 +12,7 @@ appId: com.viewstate.lite
 - tapOn:
     id: "backup-create"
 - tapOn: "متابعة وإنشاء النسخة"
-- assertVisible: "Share with"
+- assertVisible: "Sharing 1 file"
 - takeScreenshot: "backup-share-sheet"
 - pressKey: BACK
 - tapOn:

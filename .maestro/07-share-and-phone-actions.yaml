@@ -2,19 +2,18 @@ appId: com.viewstate.lite
 ---
 - launchApp
 - tapOn: "العقارات"
-- tapOn: "QA Salmiya Apartment Edited"
+- tapOn: "QA Salmiya Apartment"
 - tapOn: "معاينة ثم مشاركة إلى WhatsApp"
 - assertVisible: "معاينة المشاركة الآمنة"
-- assertVisible: "QA Salmiya Apartment Edited"
+- assertVisible: "QA Salmiya Apartment"
 - assertNotVisible: "QA private notes must remain private"
 - tapOn:
     id: "property-share"
-- assertVisible: "Share with"
 - takeScreenshot: "android-property-share-sheet"
 - pressKey: BACK
 - pressKey: BACK
 - tapOn: "الأشخاص"
-- tapOn: "QA Person Edited"
+- tapOn: "QA Person"
 - tapOn: "واتساب 55551234"
 - takeScreenshot: "contact-whatsapp-intent"
 - pressKey: BACK

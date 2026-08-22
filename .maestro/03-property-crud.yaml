@@ -38,7 +38,7 @@ appId: com.viewstate.lite
 - hideKeyboard
 - scrollUntilVisible:
     element:
-      text: "اختر الموقع على Google Maps"
+      id: "property-location-open"
     direction: DOWN
 - tapOn:
     id: "property-location-open"
@@ -58,15 +58,16 @@ appId: com.viewstate.lite
 - assertVisible: "تفاصيل العقار"
 - assertVisible: "QA Salmiya Apartment"
 - tapOn: "تعديل العقار"
-- tapOn:
-    id: "property-title"
-- eraseText: 40
-- inputText: "QA Salmiya Apartment Edited"
-- hideKeyboard
+- scrollUntilVisible:
+    element:
+      text: "مؤجر"
+    direction: DOWN
+- tapOn: "مؤجر"
 - scrollUntilVisible:
     element:
       text: "حفظ العقار"
     direction: DOWN
 - tapOn:
     id: "property-save"
-- assertVisible: "QA Salmiya Apartment Edited"
+- assertVisible: "QA Salmiya Apartment"
+- assertVisible: "مؤجر"

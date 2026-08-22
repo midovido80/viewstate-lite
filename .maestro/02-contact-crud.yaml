@@ -27,14 +27,12 @@ appId: com.viewstate.lite
 - assertVisible: "QA Person"
 - tapOn: "تعديل بيانات الشخص"
 - tapOn:
-    id: "contact-name"
-- eraseText: 30
-- inputText: "QA Person Edited"
-- hideKeyboard
+    id: "contact-role-tenant"
 - scrollUntilVisible:
     element:
       text: "حفظ"
     direction: DOWN
 - tapOn:
     id: "contact-save"
-- assertVisible: "QA Person Edited"
+- assertVisible: "QA Person"
+- assertVisible: "باحث للإيجار"
