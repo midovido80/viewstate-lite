@@ -8,7 +8,7 @@ Date: 2026-08-22
 - Arabic-first light V001 shell and native tab navigation
 - Local SQLite v3 schema with additive, versioned migrations
 - Contacts, five approved roles and Kuwait phone normalization
-- Batched device-contact import with in-memory deduplication, full-row selection and best-effort notes
+- Batched device-contact import with in-memory deduplication, full-row selection, and verbatim device names/notes
 - Rental-only property capture with drafts, media copy, PACI and location
 - Multiple requested and offered records for every contact
 - Explained bidirectional local matching with exact area/type gates, rent tolerance and a 70% threshold

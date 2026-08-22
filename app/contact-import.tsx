@@ -2,6 +2,7 @@ import {useEffect,useMemo,useState} from 'react';import * as ExpoContacts from '
 import {Alert,ActivityIndicator,FlatList,Pressable,StyleSheet,Text,TextInput,View} from 'react-native';import {router} from 'expo-router';import {SafeAreaView} from 'react-native-safe-area-context';
 import {PrimaryButton} from '@/components/PrimaryButton';import {contactsRepository} from '@/lib/database';import {normalizeKuwaitPhone} from '@/lib/phone';import {createId} from '@/lib/id';
 import {AppHeader} from '@/components/AppHeader';
+import {preserveDeviceContactName,preserveDeviceContactNotes} from '@/features/contacts/deviceImport';
 import type {ContactRole} from '@/types/domain';import {colors,radius,spacing} from '@/theme/tokens';
 type Candidate={key:string;name:string;phone:string;notes:string;existingId:string|null};
 export default function ContactImport(){const [items,setItems]=useState<Candidate[]>([]);const [selected,setSelected]=useState<Set<string>>(()=>new Set());const [role,setRole]=useState<ContactRole>('tenant');
@@ -10,7 +11,7 @@ export default function ContactImport(){const [items,setItems]=useState<Candidat
     try{const [result,existing]=await Promise.all([
       ExpoContacts.getContactsAsync({fields:[ExpoContacts.Fields.PhoneNumbers,ExpoContacts.Fields.Note],sort:ExpoContacts.SortTypes.FirstName}),contactsRepository.list(),
     ]);const existingByPhone=new Map(existing.map(contact=>[contact.phone,contact.id]));const seen=new Set<string>();const candidates:Candidate[]=[];
-      for(const c of result.data){for(const number of c.phoneNumbers??[]){const phone=normalizeKuwaitPhone(number.number??'');if(phone&&!seen.has(phone)){seen.add(phone);candidates.push({key:phone,name:c.name||phone,phone,notes:c.note??'',existingId:existingByPhone.get(phone)??null});break}}}
+      for(const c of result.data){for(const number of c.phoneNumbers??[]){const phone=normalizeKuwaitPhone(number.number??'');if(phone&&!seen.has(phone)){seen.add(phone);candidates.push({key:phone,name:preserveDeviceContactName(c.name,phone),phone,notes:preserveDeviceContactNotes(c.note),existingId:existingByPhone.get(phone)??null});break}}}
       setItems(candidates)}finally{setLoading(false)}})()},[]);
   const filtered=useMemo(()=>{const needle=query.trim().toLocaleLowerCase('ar-KW');return items.filter(item=>!needle||item.name.toLocaleLowerCase('ar-KW').includes(needle)||item.phone.includes(needle))},[items,query]);
   const toggle=(key:string)=>setSelected(old=>{const next=new Set(old);if(next.has(key))next.delete(key);else next.add(key);return next});
