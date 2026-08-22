@@ -98,8 +98,8 @@ export default function PropertyForm(){const {id,offeredByContactId}=useLocalSea
         onPress={()=>setForm({...form,status:value})} style={[styles.chip,form.status===value&&styles.active]}><Text style={[styles.chipText,form.status===value&&styles.activeText]}>{t(value)}</Text></Pressable>)}</View>
       <FormField testID="property-private-notes" label={t('privateNotes')} value={form.privateNotes} multiline onChangeText={privateNotes=>setForm({...form,privateNotes})}/>
       <FormField testID="property-paci" label={t('paci')} value={form.paci} keyboardType="numeric" onChangeText={paci=>setForm({...form,paci})}/>
-      <PrimaryButton title={form.mapUrl?t('locationSelected'):t('chooseGoogleLocation')} onPress={openLocation}/>
-      <PrimaryButton title={t('addMedia',{count:pendingMedia.length})} onPress={pick}/><PrimaryButton title={t('saveProperty')} onPress={save}/>
+      <PrimaryButton testID="property-location-open" title={form.mapUrl?t('locationSelected'):t('chooseGoogleLocation')} onPress={openLocation}/>
+      <PrimaryButton title={t('addMedia',{count:pendingMedia.length})} onPress={pick}/><PrimaryButton testID="property-save" title={t('saveProperty')} onPress={save}/>
     </KeyboardAwareScrollViewCompat>
     <Modal visible={locationOpen} animationType="slide" onRequestClose={()=>setLocationOpen(false)}>
       <SafeAreaView style={styles.locationPage}>
@@ -108,7 +108,7 @@ export default function PropertyForm(){const {id,offeredByContactId}=useLocalSea
           <PrimaryButton title={t('openGoogleMaps')} onPress={launchGoogleMaps}/>
           <FormField testID="property-map-url" label={t('map')} placeholder={t('pasteMapLink')} value={locationDraft} onChangeText={setLocationDraft} autoCapitalize="none"/>
           <Text style={styles.or}>{t('or')}</Text><PrimaryButton title={t('useCurrentLocation')} onPress={useCurrentLocation}/>
-          <PrimaryButton title={t('saveLocation')} onPress={saveLocation} color={colors.green}/></View>
+          <PrimaryButton testID="property-location-save" title={t('saveLocation')} onPress={saveLocation} color={colors.green}/></View>
       </SafeAreaView>
     </Modal>
   </SafeAreaView>;

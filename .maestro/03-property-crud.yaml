@@ -9,8 +9,7 @@ appId: com.viewstate.lite
 - hideKeyboard
 - tapOn:
     id: "property-area"
-- hideKeyboard
-- tapOn: "مدينة الكويت"
+- tapOn: "الشرق"
 - tapOn:
     id: "property-block"
 - assertVisible: "1"
@@ -41,18 +40,21 @@ appId: com.viewstate.lite
     element:
       text: "اختر الموقع على Google Maps"
     direction: DOWN
-- tapOn: "اختر الموقع على Google Maps"
+- tapOn:
+    id: "property-location-open"
 - tapOn:
     id: "property-map-url"
 - inputText: "https://maps.google.com/?q=29.3375,48.0750"
 - takeScreenshot: "location-url-keyboard"
 - hideKeyboard
-- tapOn: "حفظ الموقع"
+- tapOn:
+    id: "property-location-save"
 - scrollUntilVisible:
     element:
       text: "حفظ العقار"
     direction: DOWN
-- tapOn: "حفظ العقار"
+- tapOn:
+    id: "property-save"
 - assertVisible: "تفاصيل العقار"
 - assertVisible: "QA Salmiya Apartment"
 - tapOn: "تعديل العقار"
@@ -65,5 +67,6 @@ appId: com.viewstate.lite
     element:
       text: "حفظ العقار"
     direction: DOWN
-- tapOn: "حفظ العقار"
+- tapOn:
+    id: "property-save"
 - assertVisible: "QA Salmiya Apartment Edited"

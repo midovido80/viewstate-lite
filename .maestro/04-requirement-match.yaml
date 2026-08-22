@@ -6,8 +6,7 @@ appId: com.viewstate.lite
 - tapOn: "+ إضافة مطلوب"
 - tapOn: "شقة"
 - tapOn: "اختر منطقة أو أكثر"
-- hideKeyboard
-- tapOn: "مدينة الكويت"
+- tapOn: "الشرق"
 - tapOn: "تم (1)"
 - tapOn:
     id: "requirement-min-rent"
@@ -25,7 +24,8 @@ appId: com.viewstate.lite
 - inputText: "QA matching notes and keyboard visibility"
 - takeScreenshot: "requirement-notes-keyboard"
 - hideKeyboard
-- tapOn: "حفظ ومطابقة الآن"
+- tapOn:
+    id: "requirement-save-match"
 - assertVisible: "العقارات المطابقة"
 - assertVisible: "QA Salmiya Apartment Edited"
 - tapOn: "المطابقات"

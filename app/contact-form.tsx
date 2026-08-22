@@ -66,8 +66,8 @@ export default function ContactForm(){
     </View>)}
     <PrimaryButton title={t('addPhoneNumber')} onPress={()=>setForm(old=>({...old,phones:[...old.phones,newPhone(false)]}))}/>
     <Text style={[styles.label,{textAlign:isRTL?'right':'left'}]}>{t('role')}</Text><View style={[styles.roles,{flexDirection:isRTL?'row-reverse':'row'}]}>{roles.map(value=><Pressable
-      key={value} onPress={()=>setForm({...form,role:value})} style={[styles.chip,form.role===value&&styles.active]}><Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.chipText,form.role===value&&styles.activeText]}>{getRoleLabel(language,value)}</Text></Pressable>)}</View>
-    <FormField testID="contact-notes" label={t('notes')} value={form.notes} multiline onChangeText={notes=>setForm({...form,notes})}/><PrimaryButton title={t('save')} onPress={save}/>
+      testID={`contact-role-${value}`} key={value} onPress={()=>setForm({...form,role:value})} style={[styles.chip,form.role===value&&styles.active]}><Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.chipText,form.role===value&&styles.activeText]}>{getRoleLabel(language,value)}</Text></Pressable>)}</View>
+    <FormField testID="contact-notes" label={t('notes')} value={form.notes} multiline onChangeText={notes=>setForm({...form,notes})}/><PrimaryButton testID="contact-save" title={t('save')} onPress={save}/>
   </KeyboardAwareScrollViewCompat></SafeAreaView>;
 }
 

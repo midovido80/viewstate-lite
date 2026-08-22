@@ -7,7 +7,8 @@ appId: com.viewstate.lite
 - assertVisible: "معاينة المشاركة الآمنة"
 - assertVisible: "QA Salmiya Apartment Edited"
 - assertNotVisible: "QA private notes must remain private"
-- tapOn: "مشاركة واختيار WhatsApp"
+- tapOn:
+    id: "property-share"
 - assertVisible: "Share with"
 - takeScreenshot: "android-property-share-sheet"
 - pressKey: BACK

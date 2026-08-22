@@ -10,7 +10,8 @@ appId: com.viewstate.lite
     id: "contact-phone-0"
 - inputText: "55551234"
 - hideKeyboard
-- tapOn: "مالك"
+- tapOn:
+    id: "contact-role-owner"
 - scrollUntilVisible:
     element:
       id: "contact-notes"
@@ -20,7 +21,8 @@ appId: com.viewstate.lite
 - inputText: "QA contact notes keyboard visibility"
 - takeScreenshot: "contact-notes-keyboard"
 - hideKeyboard
-- tapOn: "حفظ"
+- tapOn:
+    id: "contact-save"
 - assertVisible: "تفاصيل الشخص"
 - assertVisible: "QA Person"
 - tapOn: "تعديل بيانات الشخص"
@@ -33,6 +35,6 @@ appId: com.viewstate.lite
     element:
       text: "حفظ"
     direction: DOWN
-- tapOn: "حفظ"
+- tapOn:
+    id: "contact-save"
 - assertVisible: "QA Person Edited"
-

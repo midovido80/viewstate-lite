@@ -17,7 +17,7 @@ export default function ShareProperty(){const {id}=useLocalSearchParams<{id:stri
   return <SafeAreaView style={styles.page} edges={['top']}><AppHeader title={t('safeSharePreview')}/><ScrollView contentContainerStyle={styles.content}>
     <Text style={[styles.safety,{textAlign:isRTL?'right':'left'}]}>{t('safeShareInfo')}</Text>
     <Toggle label={t('sendDescription')} value={includeDescription} onChange={setIncludeDescription}/><Toggle label={t('sendPaci')} value={includePaci} onChange={setIncludePaci} disabled={!property.paci}/><Toggle label={t('sendLocation')} value={includeLocation} onChange={setIncludeLocation} disabled={!property.mapUrl}/>
-    <View style={styles.preview}><Text style={[styles.previewTitle,{textAlign:isRTL?'right':'left'}]}>{t('messageToSend')}</Text><Text selectable style={[styles.message,{textAlign:isRTL?'right':'left'}]}>{message}</Text></View><PrimaryButton title={t('shareChooseWhatsapp')} onPress={share} color={colors.green}/>
+    <View style={styles.preview}><Text style={[styles.previewTitle,{textAlign:isRTL?'right':'left'}]}>{t('messageToSend')}</Text><Text selectable style={[styles.message,{textAlign:isRTL?'right':'left'}]}>{message}</Text></View><PrimaryButton testID="property-share" title={t('shareChooseWhatsapp')} onPress={share} color={colors.green}/>
     <Text style={[styles.mediaNote,{textAlign:isRTL?'right':'left'}]}>{t('mediaShareNote')}</Text>
   </ScrollView></SafeAreaView>;
 }

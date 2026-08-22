@@ -5,15 +5,18 @@ appId: com.viewstate.lite
 - tapOn: "English"
 - assertVisible: "Data protection"
 - tapOn: "العربية"
-- tapOn: "إنشاء ومشاركة نسخة احتياطية"
+- tapOn:
+    id: "backup-create"
 - assertVisible: "تنبيه مهم قبل النسخ الاحتياطي"
 - tapOn: "إلغاء"
-- tapOn: "إنشاء ومشاركة نسخة احتياطية"
+- tapOn:
+    id: "backup-create"
 - tapOn: "متابعة وإنشاء النسخة"
 - assertVisible: "Share with"
 - takeScreenshot: "backup-share-sheet"
 - pressKey: BACK
-- tapOn: "استعادة نسخة احتياطية"
+- tapOn:
+    id: "backup-restore"
 - assertVisible: "Recent"
 - takeScreenshot: "backup-restore-picker"
 - pressKey: BACK
