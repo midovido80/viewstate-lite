@@ -5,7 +5,7 @@ import {filterKuwaitAreaGroups,governorateForArea} from '@/data/kuwaitAreas';
 import {colors,radius,spacing} from '@/theme/tokens';
 import {useI18n} from '@/i18n/I18nContext';
 
-export function AreaPicker({value,onChange}:{value:string;onChange:(area:string)=>void}) {
+export function AreaPicker({value,onChange,testID}:{value:string;onChange:(area:string)=>void;testID?:string}) {
   const {t,isRTL}=useI18n();
   const [open,setOpen]=useState(false);
   const [query,setQuery]=useState('');
@@ -15,7 +15,7 @@ export function AreaPicker({value,onChange}:{value:string;onChange:(area:string)
   return <>
     <View style={styles.fieldWrap}>
       <Text style={[styles.label,{textAlign:isRTL?'right':'left'}]}>{t('area')} *</Text>
-      <Pressable accessibilityRole="button" onPress={()=>setOpen(true)} style={[styles.selector,{flexDirection:isRTL?'row':'row-reverse'}]}>
+      <Pressable testID={testID} accessibilityRole="button" onPress={()=>setOpen(true)} style={[styles.selector,{flexDirection:isRTL?'row':'row-reverse'}]}>
         <Ionicons name="chevron-down" size={20} color={colors.blue}/>
         <View style={styles.selectedText}>
           <Text style={[styles.value,{textAlign:isRTL?'right':'left'},!value&&styles.placeholder]}>{value||t('chooseArea')}</Text>

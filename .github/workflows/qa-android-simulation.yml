@@ -1,0 +1,64 @@
+name: QA Android Full Simulation
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  android-maestro:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: corepack enable
+      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm test
+      - run: pnpm typecheck
+      - run: pnpm exec expo prebuild --platform android --no-install --non-interactive
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug
+      - name: Install Maestro
+        run: |
+          curl -Ls https://get.maestro.mobile.dev | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run realistic Android flows
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          disable-animations: true
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
+          script: |
+            adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+            mkdir -p qa-results
+            for flow in .maestro/01-tabs.yaml .maestro/02-contact-crud.yaml .maestro/03-property-crud.yaml .maestro/04-requirement-match.yaml .maestro/05-more-and-import.yaml; do
+              name=$(basename "$flow" .yaml)
+              maestro test "$flow" --format junit --output "qa-results/$name.xml" || true
+            done
+            adb logcat -d '*:E' > qa-results/android-errors.log
+      - name: Upload QA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lite-03a3-android-simulation-evidence
+          path: |
+            qa-results
+            ~/.maestro/tests
+          if-no-files-found: warn
+

@@ -6,15 +6,15 @@ import {useI18n} from '@/i18n/I18nContext';
 
 export interface ChoiceOption<T extends string> {value:T;label:string}
 
-export function ChoicePicker<T extends string>({label,value,placeholder,options,onChange}:{
-  label:string;value:T|null;placeholder:string;options:readonly ChoiceOption<T>[];onChange:(value:T)=>void;
+export function ChoicePicker<T extends string>({label,value,placeholder,options,onChange,testID}:{
+  label:string;value:T|null;placeholder:string;options:readonly ChoiceOption<T>[];onChange:(value:T)=>void;testID?:string;
 }) {
   const {isRTL}=useI18n();
   const [open,setOpen]=useState(false);
   const selected=options.find(option=>option.value===value);
   return <View style={styles.wrap}>
     <Text style={[styles.label,{textAlign:isRTL?'right':'left'}]}>{label}</Text>
-    <Pressable onPress={()=>setOpen(true)} style={[styles.selector,{flexDirection:isRTL?'row':'row-reverse'}]}>
+    <Pressable testID={testID} onPress={()=>setOpen(true)} style={[styles.selector,{flexDirection:isRTL?'row':'row-reverse'}]}>
       <Ionicons name="chevron-down" size={20} color={colors.blue}/>
       <Text style={[styles.value,{textAlign:isRTL?'right':'left'},!selected&&styles.placeholder]}>{selected?.label??placeholder}</Text>
     </Pressable>

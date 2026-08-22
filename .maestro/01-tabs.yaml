@@ -1,0 +1,16 @@
+appId: com.viewstate.lite
+---
+- launchApp:
+    clearState: true
+- assertVisible: "ViewState Lite"
+- tapOn: "الأشخاص"
+- assertVisible: "لا يوجد أشخاص مسجلون"
+- tapOn: "العقارات"
+- assertVisible: "لا توجد عقارات مسجلة"
+- tapOn: "المطابقات"
+- assertVisible: "لا توجد مطابقات مؤهلة حاليًا"
+- tapOn: "المزيد"
+- assertVisible: "حماية البيانات"
+- tapOn: "الرئيسية"
+- assertVisible: "إضافة شخص"
+

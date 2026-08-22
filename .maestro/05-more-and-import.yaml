@@ -1,0 +1,14 @@
+appId: com.viewstate.lite
+---
+- launchApp
+- tapOn: "المزيد"
+- tapOn: "English"
+- assertVisible: "Data protection"
+- tapOn: "العربية"
+- tapOn: "إنشاء ومشاركة نسخة احتياطية"
+- assertVisible: "تنبيه مهم قبل النسخ الاحتياطي"
+- tapOn: "إلغاء"
+- tapOn: "الرئيسية"
+- tapOn: "استيراد من الهاتف"
+- assertVisible:
+    text: "الصلاحية مطلوبة|الدور الافتراضي للدفعة"
