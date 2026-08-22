@@ -9,6 +9,9 @@ Date: 2026-08-22
 - Local SQLite v3 schema with additive, versioned migrations
 - Contacts, five approved roles and Kuwait phone normalization
 - Batched device-contact import with in-memory deduplication, full-row selection, and verbatim device names/notes
+- LITE-02.1 complete Arabic/English UI localization with locally persisted language selection
+- Complete approved contact-role and property-type labels without abbreviation
+- Blocking backup confirmation that photo and video files are not included
 - Rental-only property capture with drafts, media copy, PACI and location
 - Multiple requested and offered records for every contact
 - Explained bidirectional local matching with exact area/type gates, rent tolerance and a 70% threshold

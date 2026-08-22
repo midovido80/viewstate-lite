@@ -6,7 +6,7 @@ import {useI18n} from '@/i18n/I18nContext';
 import {colors,radius,spacing} from '@/theme/tokens';
 export default function Home(){const {t,isRTL}=useI18n();return <SafeAreaView style={styles.page} edges={['top']}>
   <AppHeader title="ViewState Lite"/>
-  <View style={styles.content}><Text style={[styles.welcome,{textAlign:isRTL?'right':'left'}]}>نظّم عميلك، طابق طلبه، وشارك العقار بسرعة.</Text>
+  <View style={styles.content}><Text style={[styles.welcome,{textAlign:isRTL?'right':'left'}]}>{t('welcome')}</Text>
     <View style={[styles.grid,{flexDirection:isRTL?'row-reverse':'row'}]}>
       <Card title={t('addContact')} onPress={()=>router.push('/contact-add')}/>
       <Card title={t('addProperty')} onPress={()=>router.push('/property-form')}/>

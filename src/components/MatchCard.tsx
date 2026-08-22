@@ -1,12 +1,14 @@
 import {Pressable,StyleSheet,Text,View} from 'react-native';
 import type {MatchResult,Property,Requirement} from '@/types/domain';
 import {colors,radius,spacing} from '@/theme/tokens';
+import {useI18n} from '@/i18n/I18nContext';
 
 export function MatchCard({match,property,requirement,contactName,onPressProperty,onPressContact}:{match:MatchResult;property:Property;requirement:Requirement;contactName:string;onPressProperty?:()=>void;onPressContact?:()=>void}){
+  const {t,isRTL}=useI18n();const aligned={textAlign:isRTL?'right' as const:'left' as const};
   const evaluated=match.criteria.filter(item=>item.state!=='not_specified');
-  return <View style={styles.card}><View style={styles.top}><View style={styles.copy}><Pressable disabled={!onPressContact} onPress={onPressContact}><Text style={styles.person}>{contactName}</Text></Pressable><Pressable disabled={!onPressProperty} onPress={onPressProperty}><Text style={styles.property}>{property.title}</Text></Pressable><Text style={styles.summary}>📍 {property.area}  •  💰 {property.monthlyRent} د.ك</Text></View><View style={styles.score}><Text style={styles.scoreNumber}>{match.score}%</Text><Text style={styles.scoreLabel}>تطابق</Text></View></View>
-    <View style={styles.criteria}>{evaluated.map(item=><View key={item.field} style={[styles.criterion,item.state==='matched'?styles.good:item.state==='partial'?styles.partial:styles.missed]}><Text style={styles.icon}>{item.state==='matched'?'✓':item.state==='partial'?'≈':'!'}</Text><View style={styles.criterionCopy}><Text style={styles.criterionLabel}>{item.label} · {item.earned}/{item.weight}</Text><Text style={styles.explanation}>{item.explanation}</Text></View></View>)}</View>
-    {requirement.notes?<Text style={styles.note}>ملاحظة الطلب: {requirement.notes}</Text>:null}
+  return <View style={styles.card}><View style={[styles.top,{flexDirection:isRTL?'row-reverse':'row'}]}><View style={styles.copy}><Pressable disabled={!onPressContact} onPress={onPressContact}><Text style={[styles.person,aligned]}>{contactName}</Text></Pressable><Pressable disabled={!onPressProperty} onPress={onPressProperty}><Text style={[styles.property,aligned]}>{property.title}</Text></Pressable><Text style={[styles.summary,aligned]}>📍 {property.area}  •  💰 {t('kwd',{value:property.monthlyRent})}</Text></View><View style={styles.score}><Text style={styles.scoreNumber}>{match.score}%</Text><Text style={styles.scoreLabel}>{t('match')}</Text></View></View>
+    <View style={styles.criteria}>{evaluated.map(item=><View key={item.field} style={[styles.criterion,{flexDirection:isRTL?'row-reverse':'row'},item.state==='matched'?styles.good:item.state==='partial'?styles.partial:styles.missed]}><Text style={styles.icon}>{item.state==='matched'?'✓':item.state==='partial'?'≈':'!'}</Text><View style={styles.criterionCopy}><Text style={[styles.criterionLabel,aligned]}>{item.label} · {item.earned}/{item.weight}</Text><Text style={[styles.explanation,aligned]}>{item.explanation}</Text></View></View>)}</View>
+    {requirement.notes?<Text style={[styles.note,aligned]}>{t('requirementNote',{note:requirement.notes})}</Text>:null}
   </View>;
 }
 

@@ -8,16 +8,17 @@ import {createPropertyMessage} from '@/features/sharing/propertyMessage';
 import {propertiesRepository} from '@/lib/database';
 import type {Property} from '@/types/domain';
 import {colors,radius,spacing} from '@/theme/tokens';
+import {useI18n} from '@/i18n/I18nContext';
 
-export default function ShareProperty(){const {id}=useLocalSearchParams<{id:string}>();const [property,setProperty]=useState<Property|null>(null);const [includeDescription,setIncludeDescription]=useState(true);const [includePaci,setIncludePaci]=useState(false);const [includeLocation,setIncludeLocation]=useState(false);
-  useEffect(()=>{if(id)void propertiesRepository.get(id).then(setProperty)},[id]);const message=useMemo(()=>property?createPropertyMessage(property,{includeDescription,includePaci,includeLocation}):'',[includeDescription,includeLocation,includePaci,property]);
-  const share=async()=>{if(!property)return;try{await Share.share({title:property.title,message})}catch{Alert.alert('تعذرت المشاركة','حاول مرة أخرى من شاشة المعاينة.')}};
-  if(!property)return <SafeAreaView style={styles.page}><Text style={styles.loading}>جارٍ تجهيز المعاينة…</Text></SafeAreaView>;
-  return <SafeAreaView style={styles.page} edges={['top']}><AppHeader title="معاينة المشاركة الآمنة"/><ScrollView contentContainerStyle={styles.content}>
-    <Text style={styles.safety}>🔒 بيانات المالك ومصدر العرض والملاحظات الخاصة لا تدخل الرسالة إطلاقًا.</Text>
-    <Toggle label="إرسال الوصف" value={includeDescription} onChange={setIncludeDescription}/><Toggle label="إرسال الرقم الآلي PACI" value={includePaci} onChange={setIncludePaci} disabled={!property.paci}/><Toggle label="إرسال رابط الموقع الدقيق" value={includeLocation} onChange={setIncludeLocation} disabled={!property.mapUrl}/>
-    <View style={styles.preview}><Text style={styles.previewTitle}>الرسالة التي ستُرسل</Text><Text selectable style={styles.message}>{message}</Text></View><PrimaryButton title="مشاركة واختيار WhatsApp" onPress={share} color={colors.green}/>
-    <Text style={styles.mediaNote}>الصور والفيديو محفوظة على هاتفك، ويمكن إرفاقها من WhatsApp بعد فتح الرسالة.</Text>
+export default function ShareProperty(){const {id}=useLocalSearchParams<{id:string}>();const {t,language,isRTL}=useI18n();const [property,setProperty]=useState<Property|null>(null);const [includeDescription,setIncludeDescription]=useState(true);const [includePaci,setIncludePaci]=useState(false);const [includeLocation,setIncludeLocation]=useState(false);
+  useEffect(()=>{if(id)void propertiesRepository.get(id).then(setProperty)},[id]);const message=useMemo(()=>property?createPropertyMessage(property,{includeDescription,includePaci,includeLocation,language}):'',[includeDescription,includeLocation,includePaci,language,property]);
+  const share=async()=>{if(!property)return;try{await Share.share({title:property.title,message})}catch{Alert.alert(t('shareFailed'),t('shareFailedMessage'))}};
+  if(!property)return <SafeAreaView style={styles.page}><Text style={styles.loading}>{t('preparingPreview')}</Text></SafeAreaView>;
+  return <SafeAreaView style={styles.page} edges={['top']}><AppHeader title={t('safeSharePreview')}/><ScrollView contentContainerStyle={styles.content}>
+    <Text style={[styles.safety,{textAlign:isRTL?'right':'left'}]}>{t('safeShareInfo')}</Text>
+    <Toggle label={t('sendDescription')} value={includeDescription} onChange={setIncludeDescription}/><Toggle label={t('sendPaci')} value={includePaci} onChange={setIncludePaci} disabled={!property.paci}/><Toggle label={t('sendLocation')} value={includeLocation} onChange={setIncludeLocation} disabled={!property.mapUrl}/>
+    <View style={styles.preview}><Text style={[styles.previewTitle,{textAlign:isRTL?'right':'left'}]}>{t('messageToSend')}</Text><Text selectable style={[styles.message,{textAlign:isRTL?'right':'left'}]}>{message}</Text></View><PrimaryButton title={t('shareChooseWhatsapp')} onPress={share} color={colors.green}/>
+    <Text style={[styles.mediaNote,{textAlign:isRTL?'right':'left'}]}>{t('mediaShareNote')}</Text>
   </ScrollView></SafeAreaView>;
 }
 

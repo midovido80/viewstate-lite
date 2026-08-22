@@ -3,31 +3,33 @@ import {useMemo,useState} from 'react';
 import {Modal,Pressable,SafeAreaView,SectionList,StyleSheet,Text,TextInput,View} from 'react-native';
 import {filterKuwaitAreaGroups} from '@/data/kuwaitAreas';
 import {colors,radius,spacing} from '@/theme/tokens';
+import {useI18n} from '@/i18n/I18nContext';
 
 export function MultiAreaPicker({value,onChange}:{value:string[];onChange:(areas:string[])=>void}){
+  const {t,isRTL}=useI18n();
   const [open,setOpen]=useState(false);const [query,setQuery]=useState('');
   const sections=useMemo(()=>filterKuwaitAreaGroups(query).map(group=>({title:group.governorate,data:[...group.areas]})),[query]);
   const toggle=(area:string)=>onChange(value.includes(area)?value.filter(item=>item!==area):[...value,area]);
   const close=()=>{setOpen(false);setQuery('')};
   return <View style={styles.wrap}>
-    <Text style={styles.label}>المنطقة *</Text>
-    <Pressable onPress={()=>setOpen(true)} style={styles.selector}>
+    <Text style={[styles.label,{textAlign:isRTL?'right':'left'}]}>{t('area')} *</Text>
+    <Pressable onPress={()=>setOpen(true)} style={[styles.selector,{flexDirection:isRTL?'row':'row-reverse'}]}>
       <Ionicons name="chevron-down" size={20} color={colors.blue}/><Text style={[styles.value,!value.length&&styles.placeholder]}>
-        {value.length?`${value.join('، ')}`:'اختر منطقة أو أكثر'}</Text><Ionicons name="location-outline" size={22} color={colors.red}/>
+        {value.length?`${value.join('، ')}`:t('chooseAreas')}</Text><Ionicons name="location-outline" size={22} color={colors.red}/>
     </Pressable>
     {value.length?<View style={styles.chips}>{value.map(area=><Pressable key={area} onPress={()=>toggle(area)} style={styles.chip}>
       <Ionicons name="close-circle" size={17} color={colors.blue}/><Text style={styles.chipText}>{area}</Text></Pressable>)}</View>:null}
     <Modal visible={open} animationType="slide" onRequestClose={close}>
       <SafeAreaView style={styles.page}>
-        <View style={styles.header}><Pressable onPress={close} hitSlop={12}><Text style={styles.done}>تم ({value.length})</Text></Pressable>
-          <Text style={styles.title}>اختر المناطق</Text></View>
+        <View style={styles.header}><Pressable onPress={close} hitSlop={12}><Text style={styles.done}>{t('doneCount',{count:value.length})}</Text></Pressable>
+          <Text style={styles.title}>{t('chooseAreasTitle')}</Text></View>
         <View style={styles.search}><Ionicons name="search" size={21} color={colors.muted}/><TextInput autoFocus value={query} onChangeText={setQuery}
-          placeholder="اكتب أول حرفين" placeholderTextColor={colors.muted} selectionColor={colors.blue} cursorColor={colors.blue} style={styles.searchInput}/></View>
+          placeholder={t('typeFirstLetters')} placeholderTextColor={colors.muted} selectionColor={colors.blue} cursorColor={colors.blue} style={[styles.searchInput,{textAlign:isRTL?'right':'left'}]}/></View>
         <SectionList sections={sections} keyExtractor={item=>item} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.list}
           renderSectionHeader={({section})=><Text style={styles.section}>{section.title}</Text>}
           renderItem={({item})=>{const selected=value.includes(item);return <Pressable onPress={()=>toggle(item)} style={[styles.row,selected&&styles.selected]}>
             <Ionicons name={selected?'checkmark-circle':'ellipse-outline'} size={23} color={selected?colors.blue:colors.border}/><Text style={styles.rowText}>{item}</Text></Pressable>}}
-          ListEmptyComponent={<Text style={styles.empty}>لا توجد منطقة مطابقة</Text>}/>
+          ListEmptyComponent={<Text style={styles.empty}>{t('noArea')}</Text>}/>
       </SafeAreaView>
     </Modal>
   </View>;

@@ -15,7 +15,7 @@ export function AppHeader({title,query,onQueryChange}:{title:string;query?:strin
     </View> : <Pressable accessibilityRole="button" onPress={()=>router.push('/global-search')}
       style={[styles.search,{flexDirection:isRTL?'row-reverse':'row'}]}>
       <Ionicons name="search" size={20} color={colors.blue}/>
-      <Text style={[styles.searchPrompt,{textAlign:isRTL?'right':'left'}]}>ابحث عن عقار أو شخص</Text>
+      <Text style={[styles.searchPrompt,{textAlign:isRTL?'right':'left'}]}>{t('search')}</Text>
     </Pressable>}
   </View>;
 }

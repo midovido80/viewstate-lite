@@ -6,29 +6,28 @@ import {AppHeader} from '@/components/AppHeader';
 import {globalSearchRepository,type GlobalSearchResults} from '@/lib/database';
 import type {ContactRole} from '@/types/domain';
 import {colors,radius,spacing} from '@/theme/tokens';
+import {getRoleLabel,useI18n} from '@/i18n/I18nContext';
 
 type SearchRow=
   | {kind:'heading';id:string;label:string}
   | {kind:'contact';id:string;name:string;phone:string;role:ContactRole}
   | {kind:'property';id:string;title:string;area:string;rent:number};
-const roleLabels:Record<ContactRole,string>={tenant:'باحث للإيجار',owner:'مالك',broker:'دلال',real_estate_company:'شركة عقارية',building_guard:'حارس'};
-
-export default function GlobalSearch(){const [query,setQuery]=useState('');const [results,setResults]=useState<GlobalSearchResults>({contacts:[],properties:[]});
+export default function GlobalSearch(){const {t,language,isRTL}=useI18n();const [query,setQuery]=useState('');const [results,setResults]=useState<GlobalSearchResults>({contacts:[],properties:[]});
   useEffect(()=>{let active=true;const timer=setTimeout(()=>{globalSearchRepository.search(query).then(value=>{if(active)setResults(value)})},120);
     return()=>{active=false;clearTimeout(timer)}},[query]);
   const rows:SearchRow[]=[];
-  if(results.contacts.length){rows.push({kind:'heading',id:'contacts',label:`الأشخاص (${results.contacts.length})`});rows.push(...results.contacts.map(item=>({kind:'contact' as const,id:item.id,name:item.name,phone:item.phone,role:item.role})))}
-  if(results.properties.length){rows.push({kind:'heading',id:'properties',label:`العقارات (${results.properties.length})`});rows.push(...results.properties.map(item=>({kind:'property' as const,id:item.id,title:item.title,area:item.area,rent:item.monthlyRent})))}
-  const empty=query.trim()? 'لا توجد نتائج مطابقة' : 'اكتب اسم الشخص أو رقمه، أو اسم العقار أو المنطقة أو PACI';
-  return <SafeAreaView style={styles.page} edges={['top']}><AppHeader title="البحث الشامل" query={query} onQueryChange={setQuery}/>
+  if(results.contacts.length){rows.push({kind:'heading',id:'contacts',label:t('peopleCount',{count:results.contacts.length})});rows.push(...results.contacts.map(item=>({kind:'contact' as const,id:item.id,name:item.name,phone:item.phone,role:item.role})))}
+  if(results.properties.length){rows.push({kind:'heading',id:'properties',label:t('propertiesCount',{count:results.properties.length})});rows.push(...results.properties.map(item=>({kind:'property' as const,id:item.id,title:item.title,area:item.area,rent:item.monthlyRent})))}
+  const empty=query.trim()?t('noSearchResults'):t('searchHelp');
+  return <SafeAreaView style={styles.page} edges={['top']}><AppHeader title={t('globalSearch')} query={query} onQueryChange={setQuery}/>
     <FlatList data={rows} keyExtractor={item=>`${item.kind}:${item.id}`} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.list}
       ListEmptyComponent={<Text style={styles.empty}>{empty}</Text>}
       renderItem={({item})=>item.kind==='heading'?<Text style={styles.heading}>{item.label}</Text>:item.kind==='contact'?
-        <Pressable onPress={()=>router.push({pathname:'/contact-detail',params:{id:item.id}})} style={styles.card}>
-          <View style={styles.copy}><Text style={styles.title}>{item.name}</Text><Text style={styles.sub}>{item.phone}</Text></View><Text style={styles.badge}>{roleLabels[item.role]}</Text>
+        <Pressable onPress={()=>router.push({pathname:'/contact-detail',params:{id:item.id}})} style={[styles.card,{flexDirection:isRTL?'row-reverse':'row'}]}>
+          <View style={styles.copy}><Text style={[styles.title,{textAlign:isRTL?'right':'left'}]}>{item.name}</Text><Text style={[styles.sub,{textAlign:isRTL?'right':'left'}]}>{item.phone}</Text></View><Text style={styles.badge}>{getRoleLabel(language,item.role)}</Text>
         </Pressable>:
-        <Pressable onPress={()=>router.push({pathname:'/property-detail',params:{id:item.id}})} style={styles.card}>
-          <View style={styles.copy}><Text style={styles.title}>{item.title}</Text><Text style={styles.sub}>📍 {item.area}</Text></View><Text style={styles.rent}>{item.rent} د.ك</Text>
+        <Pressable onPress={()=>router.push({pathname:'/property-detail',params:{id:item.id}})} style={[styles.card,{flexDirection:isRTL?'row-reverse':'row'}]}>
+          <View style={styles.copy}><Text style={[styles.title,{textAlign:isRTL?'right':'left'}]}>{item.title}</Text><Text style={[styles.sub,{textAlign:isRTL?'right':'left'}]}>📍 {item.area}</Text></View><Text style={styles.rent}>{t('kwd',{value:item.rent})}</Text>
         </Pressable>}/>
   </SafeAreaView>}
 

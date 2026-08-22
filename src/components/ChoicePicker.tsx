@@ -2,19 +2,21 @@ import {Ionicons} from '@expo/vector-icons';
 import {useState} from 'react';
 import {Modal,Pressable,SafeAreaView,StyleSheet,Text,View} from 'react-native';
 import {colors,radius,spacing} from '@/theme/tokens';
+import {useI18n} from '@/i18n/I18nContext';
 
 export interface ChoiceOption<T extends string> {value:T;label:string}
 
 export function ChoicePicker<T extends string>({label,value,placeholder,options,onChange}:{
   label:string;value:T|null;placeholder:string;options:readonly ChoiceOption<T>[];onChange:(value:T)=>void;
 }) {
+  const {isRTL}=useI18n();
   const [open,setOpen]=useState(false);
   const selected=options.find(option=>option.value===value);
   return <View style={styles.wrap}>
-    <Text style={styles.label}>{label}</Text>
-    <Pressable onPress={()=>setOpen(true)} style={styles.selector}>
+    <Text style={[styles.label,{textAlign:isRTL?'right':'left'}]}>{label}</Text>
+    <Pressable onPress={()=>setOpen(true)} style={[styles.selector,{flexDirection:isRTL?'row':'row-reverse'}]}>
       <Ionicons name="chevron-down" size={20} color={colors.blue}/>
-      <Text style={[styles.value,!selected&&styles.placeholder]}>{selected?.label??placeholder}</Text>
+      <Text style={[styles.value,{textAlign:isRTL?'right':'left'},!selected&&styles.placeholder]}>{selected?.label??placeholder}</Text>
     </Pressable>
     <Modal visible={open} transparent animationType="fade" onRequestClose={()=>setOpen(false)}>
       <Pressable style={styles.backdrop} onPress={()=>setOpen(false)}>

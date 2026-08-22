@@ -12,10 +12,12 @@ import {draftsRepository,requirementsRepository} from '@/lib/database';
 import {createId} from '@/lib/id';
 import type {Furnishing,PropertyType,Requirement} from '@/types/domain';
 import {colors,radius,spacing} from '@/theme/tokens';
+import {getFurnishingLabel,getPropertyTypeLabel,useI18n} from '@/i18n/I18nContext';
 
-const types:Array<[PropertyType,string]>=[['apartment','شقة'],['villa','فيلا'],['floor','دور'],['building','بناية'],['office','مكتب'],['shop','محل'],['warehouse','مخزن'],['chalet','شاليه']];
+const types:PropertyType[]=['apartment','villa','floor','building','office','shop','warehouse','chalet'];
 
 export default function RequirementForm(){
+  const {t,language,isRTL}=useI18n();
   const {id,contactId}=useLocalSearchParams<{id?:string;contactId?:string}>();const [requirementId]=useState(()=>id??createId('requirement'));
   const draftKey=id?`requirement:${id}`:`requirement:new:${contactId??'unknown'}`;
   const [areas,setAreas]=useState<string[]>([]);const [selected,setSelected]=useState<PropertyType[]>([]);const [minRent,setMinRent]=useState('');const [maxRent,setMaxRent]=useState('');
@@ -25,21 +27,21 @@ export default function RequirementForm(){
   useEffect(()=>{if(ready)void draftsRepository.save(draftKey,{areas,selected,minRent,maxRent,bedrooms,bathrooms,furnishing,notes})},[areas,bathrooms,bedrooms,draftKey,furnishing,maxRent,minRent,notes,ready,selected]);
 
   const persist=async(matchAfterSave:boolean)=>{const minimum=minRent?Number(minRent):null;const maximum=maxRent?Number(maxRent):null;
-    if(!savedContactId){Alert.alert('تعذر تحديد الشخص');return}if(!areas.length||!selected.length||minimum===null||maximum===null){Alert.alert('بيانات غير مكتملة','اختر نوع العقار والمنطقة واكتب نطاق الإيجار.');return}
-    if(!Number.isFinite(minimum)||!Number.isFinite(maximum)||minimum<=0||maximum<minimum){Alert.alert('راجع الإيجار','يجب أن يكون أعلى إيجار مساويًا أو أكبر من أقل إيجار.');return}
+    if(!savedContactId){Alert.alert(t('personMissing'));return}if(!areas.length||!selected.length||minimum===null||maximum===null){Alert.alert(t('incompleteData'),t('requirementRequired'));return}
+    if(!Number.isFinite(minimum)||!Number.isFinite(maximum)||minimum<=0||maximum<minimum){Alert.alert(t('reviewRent'),t('rentRangeInvalid'));return}
     const now=new Date().toISOString();const value:Requirement={id:requirementId,contactId:savedContactId,areas,propertyTypes:selected,minRent:minimum,maxRent:maximum,minBedrooms:bedrooms,minBathrooms:bathrooms,furnishing,notes:notes.trim(),active:true,createdAt:createdAt??now,updatedAt:now};
     await requirementsRepository.upsert(value);await draftsRepository.clear(draftKey);if(matchAfterSave)router.replace({pathname:'/match-results',params:{requirementId}});else router.replace({pathname:'/contact-detail',params:{id:savedContactId}})};
 
-  return <SafeAreaView style={styles.page} edges={['top']}><AppHeader title={id?'تعديل المطلوب':'إضافة مطلوب'}/><KeyboardAwareScrollViewCompat contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-    <Text style={styles.intro}>سجل طلب الباحث بسرعة، ثم اعرض العقارات المطابقة بنسبة 70% أو أكثر.</Text>
-    <Text style={styles.label}>نوع العقار *</Text><View style={styles.chips}>{types.map(([value,label])=><Pressable key={value} onPress={()=>setSelected(old=>old.includes(value)?old.filter(x=>x!==value):[...old,value])}
-      style={[styles.chip,selected.includes(value)&&styles.active]}><Text style={selected.includes(value)&&styles.activeText}>{label}</Text></Pressable>)}</View>
+  return <SafeAreaView style={styles.page} edges={['top']}><AppHeader title={id?t('editRequirement'):t('addRequirement')}/><KeyboardAwareScrollViewCompat contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <Text style={[styles.intro,{textAlign:isRTL?'right':'left'}]}>{t('requirementIntro')}</Text>
+    <Text style={[styles.label,{textAlign:isRTL?'right':'left'}]}>{t('propertyTypeRequired')}</Text><View style={[styles.chips,{flexDirection:isRTL?'row-reverse':'row'}]}>{types.map(value=><Pressable key={value} onPress={()=>setSelected(old=>old.includes(value)?old.filter(x=>x!==value):[...old,value])}
+      style={[styles.typeChip,selected.includes(value)&&styles.active]}><Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.78} style={[styles.chipText,selected.includes(value)&&styles.activeText]}>{getPropertyTypeLabel(language,value)}</Text></Pressable>)}</View>
     <MultiAreaPicker value={areas} onChange={setAreas}/>
-    <View style={styles.rentRow}><View style={styles.half}><FormField label="أعلى إيجار *" value={maxRent} keyboardType="numeric" onChangeText={setMaxRent}/></View><View style={styles.half}><FormField label="أقل إيجار *" value={minRent} keyboardType="numeric" onChangeText={setMinRent}/></View></View>
-    <NumberPicker label="عدد الغرف المطلوب" value={bedrooms} onChange={setBedrooms}/><NumberPicker label="عدد الحمامات المطلوب" value={bathrooms} onChange={setBathrooms}/>
-    <Text style={styles.label}>التأثيث</Text><View style={styles.chips}>{([['any','أي'],['furnished','مفروش'],['semi_furnished','نصف مفروش'],['unfurnished','غير مفروش']] as const).map(([value,label])=><Pressable key={value} onPress={()=>setFurnishing(value)} style={[styles.chip,furnishing===value&&styles.active]}><Text style={furnishing===value&&styles.activeText}>{label}</Text></Pressable>)}</View>
-    <FormField label="شروط أو ملاحظات إضافية" value={notes} multiline onChangeText={setNotes}/><PrimaryButton title="حفظ ومطابقة الآن" onPress={()=>persist(true)}/><PrimaryButton title="حفظ فقط" onPress={()=>persist(false)} color={colors.green}/>
+    <View style={[styles.rentRow,{flexDirection:isRTL?'row':'row-reverse'}]}><View style={styles.half}><FormField label={t('maxRent')} value={maxRent} keyboardType="numeric" onChangeText={setMaxRent}/></View><View style={styles.half}><FormField label={t('minRent')} value={minRent} keyboardType="numeric" onChangeText={setMinRent}/></View></View>
+    <NumberPicker label={t('requiredBedrooms')} value={bedrooms} onChange={setBedrooms}/><NumberPicker label={t('requiredBathrooms')} value={bathrooms} onChange={setBathrooms}/>
+    <Text style={[styles.label,{textAlign:isRTL?'right':'left'}]}>{t('furnishing')}</Text><View style={[styles.chips,{flexDirection:isRTL?'row-reverse':'row'}]}>{(['any','furnished','semi_furnished','unfurnished'] as const).map(value=><Pressable key={value} onPress={()=>setFurnishing(value)} style={[styles.chip,furnishing===value&&styles.active]}><Text style={[styles.chipText,furnishing===value&&styles.activeText]}>{getFurnishingLabel(language,value)}</Text></Pressable>)}</View>
+    <FormField label={t('extraConditions')} value={notes} multiline onChangeText={setNotes}/><PrimaryButton title={t('saveAndMatch')} onPress={()=>persist(true)}/><PrimaryButton title={t('saveOnly')} onPress={()=>persist(false)} color={colors.green}/>
   </KeyboardAwareScrollViewCompat></SafeAreaView>;
 }
 
-const styles=StyleSheet.create({page:{flex:1,backgroundColor:colors.background},content:{padding:spacing.md,gap:spacing.md,paddingBottom:spacing.xl*2},intro:{backgroundColor:colors.surface,padding:spacing.md,borderRadius:radius.md,textAlign:'right',lineHeight:23,color:colors.text},label:{fontWeight:'700',textAlign:'right',color:colors.text},chips:{flexDirection:'row-reverse',flexWrap:'wrap',gap:spacing.sm},chip:{minWidth:92,minHeight:48,borderWidth:1,borderColor:colors.border,borderRadius:radius.lg,paddingHorizontal:spacing.md,paddingVertical:10,alignItems:'center',justifyContent:'center',backgroundColor:'white'},active:{backgroundColor:colors.blue,borderColor:colors.blue},activeText:{color:'white',fontWeight:'700'},rentRow:{flexDirection:'row',gap:spacing.sm},half:{flex:1}});
+const styles=StyleSheet.create({page:{flex:1,backgroundColor:colors.background},content:{padding:spacing.md,gap:spacing.md,paddingBottom:spacing.xl*2},intro:{backgroundColor:colors.surface,padding:spacing.md,borderRadius:radius.md,textAlign:'right',lineHeight:23,color:colors.text},label:{fontWeight:'700',textAlign:'right',color:colors.text},chips:{flexDirection:'row-reverse',flexWrap:'wrap',gap:spacing.sm},chip:{minWidth:92,minHeight:48,borderWidth:1,borderColor:colors.border,borderRadius:radius.lg,paddingHorizontal:spacing.md,paddingVertical:10,alignItems:'center',justifyContent:'center',backgroundColor:'white'},typeChip:{width:'30.5%',minHeight:58,borderWidth:1,borderColor:colors.border,borderRadius:radius.lg,paddingHorizontal:8,paddingVertical:10,alignItems:'center',justifyContent:'center',backgroundColor:'white'},chipText:{fontWeight:'700',color:colors.text,textAlign:'center'},active:{backgroundColor:colors.blue,borderColor:colors.blue},activeText:{color:'white',fontWeight:'700'},rentRow:{flexDirection:'row',gap:spacing.sm},half:{flex:1}});

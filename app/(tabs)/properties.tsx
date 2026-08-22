@@ -6,9 +6,9 @@ export default function PropertiesScreen(){const {t,isRTL}=useI18n();const [item
   const load=useCallback(()=>{propertiesRepository.list().then(setItems)},[]);useFocusEffect(useCallback(()=>{load()},[load]));
   return <SafeAreaView style={styles.page} edges={['top']}><AppHeader title={t('properties')}/><View style={styles.action}>
     <PrimaryButton title={t('addProperty')} onPress={()=>router.push('/property-form')}/></View><FlatList data={items} keyExtractor={x=>x.id} contentContainerStyle={styles.list}
-      ListEmptyComponent={<Text style={styles.empty}>{t('noProperties')}</Text>} renderItem={({item})=><Pressable onPress={()=>router.push({pathname:'/property-detail',params:{id:item.id}})} style={styles.card}>
+      ListEmptyComponent={<Text style={styles.empty}>{t('noProperties')}</Text>} renderItem={({item})=><Pressable onPress={()=>router.push({pathname:'/property-detail',params:{id:item.id}})} style={[styles.card,{flexDirection:isRTL?'row-reverse':'row'}]}>
         <View style={{flex:1}}><Text style={[styles.title,{textAlign:isRTL?'right':'left'}]}>{item.title}</Text><Text style={[styles.area,{textAlign:isRTL?'right':'left'}]}>📍 {item.area}</Text></View>
-        <View><Text style={styles.price}>{item.monthlyRent} د.ك</Text><Text style={styles.status}>{t(item.status)}</Text></View></Pressable>}/></SafeAreaView>}
+        <View><Text style={styles.price}>{t('kwd',{value:item.monthlyRent})}</Text><Text style={styles.status}>{t(item.status)}</Text></View></Pressable>}/></SafeAreaView>}
 const styles=StyleSheet.create({page:{flex:1,backgroundColor:colors.background},action:{padding:spacing.md},list:{padding:spacing.md,gap:spacing.sm,flexGrow:1},card:{borderWidth:1,
   borderColor:colors.border,borderRadius:radius.md,padding:spacing.md,flexDirection:'row-reverse',alignItems:'center',gap:spacing.md},title:{fontSize:18,fontWeight:'700',color:colors.red},
   area:{color:colors.muted,marginTop:6},price:{fontSize:17,fontWeight:'700',color:colors.blue},status:{textAlign:'center',color:colors.green,fontWeight:'700',marginTop:5},
