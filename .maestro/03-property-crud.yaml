@@ -13,7 +13,7 @@ appId: com.viewstate.lite
 - tapOn: "مدينة الكويت"
 - tapOn:
     id: "property-block"
-- assertVisible: "12"
+- assertVisible: "1"
 - tapOn: "3"
 - tapOn:
     id: "property-rent"
