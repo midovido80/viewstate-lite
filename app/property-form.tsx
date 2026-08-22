@@ -21,14 +21,15 @@ import type {ActivityType,Furnishing,PropertyStatus,PropertyType} from '@/types/
 import {colors,radius,spacing} from '@/theme/tokens';
 
 type Draft={
-  title:string;type:PropertyType;area:string;monthlyRent:string;bedrooms:number|null;bathrooms:number|null;sizeSqm:string;
+  title:string;type:PropertyType;area:string;blockNumber:number|null;monthlyRent:string;bedrooms:number|null;bathrooms:number|null;sizeSqm:string;
   furnishing:Exclude<Furnishing,'any'>;description:string;privateNotes:string;paci:string;mapUrl:string;
   latitude:number|null;longitude:number|null;paciNumberCount:number|null;activityType:ActivityType|null;status:PropertyStatus;
 };
-const empty:Draft={title:'',type:'apartment',area:'',monthlyRent:'',bedrooms:null,bathrooms:null,sizeSqm:'',furnishing:'unfurnished',
+const empty:Draft={title:'',type:'apartment',area:'',blockNumber:null,monthlyRent:'',bedrooms:null,bathrooms:null,sizeSqm:'',furnishing:'unfurnished',
   description:'',privateNotes:'',paci:'',mapUrl:'',latitude:null,longitude:null,paciNumberCount:null,activityType:null,status:'available'};
 const types:PropertyType[]=['apartment','villa','floor','building','office','shop','warehouse','chalet'];
 const activityValues:ActivityType[]=['company_headquarters','educational_institute','health_institute','law_office','other'];
+const blockValues=Array.from({length:12},(_,index)=>String(index+1));
 
 export default function PropertyForm(){const {id,offeredByContactId}=useLocalSearchParams<{id?:string;offeredByContactId?:string}>();const [propertyId]=useState(()=>id??createId('property'));
   const {t,language,isRTL}=useI18n();
@@ -40,10 +41,10 @@ export default function PropertyForm(){const {id,offeredByContactId}=useLocalSea
   const commercial=usesCommercialDetails(form.type);
 
   useEffect(()=>{void (async()=>{if(id){const p=await propertiesRepository.get(id);if(p){setForm({title:p.title,type:p.type,area:p.area,
-    monthlyRent:String(p.monthlyRent),bedrooms:p.bedrooms,bathrooms:p.bathrooms,sizeSqm:p.sizeSqm?.toString()??'',furnishing:p.furnishing,
+    blockNumber:p.blockNumber,monthlyRent:String(p.monthlyRent),bedrooms:p.bedrooms,bathrooms:p.bathrooms,sizeSqm:p.sizeSqm?.toString()??'',furnishing:p.furnishing,
     description:p.description,privateNotes:p.privateNotes,paci:p.paci,mapUrl:p.mapUrl,latitude:p.latitude,longitude:p.longitude,
     paciNumberCount:p.paciNumberCount,activityType:p.activityType,status:p.status});setSourceContactId(p.offeredByContactId);setOwnerContactId(p.ownerContactId)}}else{const draft=await draftsRepository.load<Partial<Draft>>(key);
-      if(draft)setForm({...empty,...draft,bedrooms:toOptionalNumber(draft.bedrooms),bathrooms:toOptionalNumber(draft.bathrooms),
+      if(draft)setForm({...empty,...draft,blockNumber:toBlockNumber(draft.blockNumber),bedrooms:toOptionalNumber(draft.bedrooms),bathrooms:toOptionalNumber(draft.bathrooms),
         paciNumberCount:toOptionalNumber(draft.paciNumberCount)})}setReady(true)})()},[id,key]);
   useEffect(()=>{if(ready)void draftsRepository.save(key,form)},[form,key,ready]);
 
@@ -61,7 +62,7 @@ export default function PropertyForm(){const {id,offeredByContactId}=useLocalSea
     const coordinates=parseCoordinatesFromMapUrl(url);setForm({...form,mapUrl:url,latitude:coordinates?.latitude??null,longitude:coordinates?.longitude??null});setLocationOpen(false)};
   const save=async()=>{const rent=Number(form.monthlyRent);if(!form.area.trim()||!Number.isFinite(rent)||rent<=0){Alert.alert(t('incompleteData'),t('propertyRequired'));return}
     const now=new Date().toISOString();await propertiesRepository.upsert({id:propertyId,
-      title:form.title.trim()||`${getPropertyTypeLabel(language,form.type)} — ${form.area.trim()}`,type:form.type,area:form.area.trim(),monthlyRent:rent,
+      title:form.title.trim()||`${getPropertyTypeLabel(language,form.type)} — ${form.area.trim()}`,type:form.type,area:form.area.trim(),blockNumber:form.blockNumber,monthlyRent:rent,
       bedrooms:commercial?null:form.bedrooms,bathrooms:form.bathrooms,sizeSqm:form.sizeSqm?Number(form.sizeSqm):null,furnishing:form.furnishing,
       description:form.description.trim(),privateNotes:form.privateNotes.trim(),paci:form.paci.trim(),mapUrl:form.mapUrl.trim(),latitude:form.latitude,
       longitude:form.longitude,paciNumberCount:commercial?form.paciNumberCount:null,activityType:commercial?form.activityType:null,
@@ -71,6 +72,7 @@ export default function PropertyForm(){const {id,offeredByContactId}=useLocalSea
     await draftsRepository.clear(key);router.replace({pathname:'/property-detail',params:{id:propertyId}})};
 
   const activityOptions=activityValues.map(value=>({value,label:getActivityLabel(language,value)}));
+  const blockOptions=[{value:'none',label:t('notSpecified')},...blockValues.map(value=>({value,label:value}))];
   return <SafeAreaView style={styles.page} edges={['top']}><AppHeader title={id?t('editProperty'):t('addRentalProperty')}/>
     <KeyboardAwareScrollViewCompat contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={[styles.label,{textAlign:isRTL?'right':'left'}]}>{t('type')}</Text><View style={[styles.chips,{flexDirection:isRTL?'row-reverse':'row'}]}>{types.map(value=><Pressable key={value}
@@ -78,6 +80,8 @@ export default function PropertyForm(){const {id,offeredByContactId}=useLocalSea
       <FormField label={t('shortPropertyName')} placeholder={t('shortPropertyExample')} value={form.title} onChangeText={title=>setForm({...form,title})}/>
       <Text style={[styles.helper,{textAlign:isRTL?'right':'left'}]}>{t('shortPropertyHelp')}</Text>
       <AreaPicker value={form.area} onChange={area=>setForm({...form,area})}/>
+      <ChoicePicker label={t('blockNumber')} value={form.blockNumber===null?'none':String(form.blockNumber)} placeholder={t('notSpecified')} options={blockOptions}
+        onChange={value=>setForm({...form,blockNumber:value==='none'?null:Number(value)})}/>
       <FormField label={`${t('rent')} *`} placeholder={t('currencyPlaceholder')} value={form.monthlyRent} keyboardType="numeric" onChangeText={monthlyRent=>setForm({...form,monthlyRent})}/>
       {!commercial&&<NumberPicker label={t('bedrooms')} value={form.bedrooms} onChange={bedrooms=>setForm({...form,bedrooms})}/>}
       <NumberPicker label={t('bathrooms')} value={form.bathrooms} onChange={bathrooms=>setForm({...form,bathrooms})}/>
@@ -111,6 +115,7 @@ export default function PropertyForm(){const {id,offeredByContactId}=useLocalSea
 }
 
 function toOptionalNumber(value:unknown):number|null{if(value===null||value===undefined||value==='')return null;const number=Number(value);return Number.isFinite(number)?number:null}
+function toBlockNumber(value:unknown):number|null{const number=toOptionalNumber(value);return number!==null&&Number.isInteger(number)&&number>=1&&number<=12?number:null}
 
 const styles=StyleSheet.create({page:{flex:1,backgroundColor:colors.background},content:{padding:spacing.md,gap:spacing.md,paddingBottom:spacing.xl},
   label:{fontWeight:'600',textAlign:'right',color:colors.text},helper:{fontSize:13,color:colors.muted,textAlign:'right',marginTop:-spacing.sm},

@@ -11,13 +11,13 @@ import {getRoleLabel,useI18n} from '@/i18n/I18nContext';
 type SearchRow=
   | {kind:'heading';id:string;label:string}
   | {kind:'contact';id:string;name:string;phone:string;role:ContactRole}
-  | {kind:'property';id:string;title:string;area:string;rent:number};
+  | {kind:'property';id:string;title:string;area:string;blockNumber:number|null;rent:number};
 export default function GlobalSearch(){const {t,language,isRTL}=useI18n();const [query,setQuery]=useState('');const [results,setResults]=useState<GlobalSearchResults>({contacts:[],properties:[]});
   useEffect(()=>{let active=true;const timer=setTimeout(()=>{globalSearchRepository.search(query).then(value=>{if(active)setResults(value)})},120);
     return()=>{active=false;clearTimeout(timer)}},[query]);
   const rows:SearchRow[]=[];
   if(results.contacts.length){rows.push({kind:'heading',id:'contacts',label:t('peopleCount',{count:results.contacts.length})});rows.push(...results.contacts.map(item=>({kind:'contact' as const,id:item.id,name:item.name,phone:item.phone,role:item.role})))}
-  if(results.properties.length){rows.push({kind:'heading',id:'properties',label:t('propertiesCount',{count:results.properties.length})});rows.push(...results.properties.map(item=>({kind:'property' as const,id:item.id,title:item.title,area:item.area,rent:item.monthlyRent})))}
+  if(results.properties.length){rows.push({kind:'heading',id:'properties',label:t('propertiesCount',{count:results.properties.length})});rows.push(...results.properties.map(item=>({kind:'property' as const,id:item.id,title:item.title,area:item.area,blockNumber:item.blockNumber,rent:item.monthlyRent})))}
   const empty=query.trim()?t('noSearchResults'):t('searchHelp');
   return <SafeAreaView style={styles.page} edges={['top']}><AppHeader title={t('globalSearch')} query={query} onQueryChange={setQuery}/>
     <FlatList data={rows} keyExtractor={item=>`${item.kind}:${item.id}`} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.list}
@@ -27,7 +27,7 @@ export default function GlobalSearch(){const {t,language,isRTL}=useI18n();const 
           <View style={styles.copy}><Text style={[styles.title,{textAlign:isRTL?'right':'left'}]}>{item.name}</Text><Text style={[styles.sub,{textAlign:isRTL?'right':'left'}]}>{item.phone}</Text></View><Text style={styles.badge}>{getRoleLabel(language,item.role)}</Text>
         </Pressable>:
         <Pressable onPress={()=>router.push({pathname:'/property-detail',params:{id:item.id}})} style={[styles.card,{flexDirection:isRTL?'row-reverse':'row'}]}>
-          <View style={styles.copy}><Text style={[styles.title,{textAlign:isRTL?'right':'left'}]}>{item.title}</Text><Text style={[styles.sub,{textAlign:isRTL?'right':'left'}]}>📍 {item.area}</Text></View><Text style={styles.rent}>{t('kwd',{value:item.rent})}</Text>
+          <View style={styles.copy}><Text style={[styles.title,{textAlign:isRTL?'right':'left'}]}>{item.title}</Text><Text style={[styles.sub,{textAlign:isRTL?'right':'left'}]}>📍 {item.area}{item.blockNumber!==null?` · ${t('blockNumberValue',{value:item.blockNumber})}`:''}</Text></View><Text style={styles.rent}>{t('kwd',{value:item.rent})}</Text>
         </Pressable>}/>
   </SafeAreaView>}
 
