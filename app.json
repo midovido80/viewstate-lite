@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "ViewState Lite",
+    "slug": "viewstate-lite",
+    "version": "0.3.0",
+    "icon": "./assets/app-icon.png",
+    "orientation": "portrait",
+    "scheme": "viewstatelite",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "android": {
+      "package": "com.viewstate.lite",
+      "versionCode": 4,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/app-icon.png",
+        "backgroundColor": "#0C68BC"
+      },
+      "permissions": ["READ_CONTACTS", "ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      ["expo-splash-screen", {"backgroundColor": "#F7F9FC", "image": "./assets/splash.png", "imageWidth": 220}],
+      ["expo-contacts", {"contactsPermission": "السماح لـ ViewState Lite باستيراد العملاء من جهات الاتصال."}],
+      ["expo-image-picker", {"photosPermission": "السماح باختيار صور وفيديوهات العقارات."}],
+      ["expo-location", {"locationWhenInUsePermission": "السماح بإضافة موقع العقار الحالي."}]
+    ],
+    "experiments": {"typedRoutes": true}
+  }
+}
