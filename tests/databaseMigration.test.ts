@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import test from 'node:test';
-import {DATABASE_SCHEMA_VERSION,LITE_03A1_MIGRATION_SQL} from '../src/lib/databaseContracts.ts';
+import {LITE_03A1_MIGRATION_SQL} from '../src/lib/databaseContracts.ts';
 
 function schemaV3Database():DatabaseSync{
   const db=new DatabaseSync(':memory:');
@@ -12,7 +12,7 @@ function schemaV3Database():DatabaseSync{
 test('LITE-03A1 migrates schema 3 to 4 without rewriting existing properties',()=>{
   const db=schemaV3Database();db.prepare('INSERT INTO properties(id,title) VALUES(?,?)').run('p1','existing');
   db.exec(LITE_03A1_MIGRATION_SQL);
-  assert.equal((db.prepare('PRAGMA user_version').get() as {user_version:number}).user_version,DATABASE_SCHEMA_VERSION);
+  assert.equal((db.prepare('PRAGMA user_version').get() as {user_version:number}).user_version,4);
   assert.equal((db.prepare('SELECT title,block_number FROM properties WHERE id=?').get('p1') as {title:string;block_number:null}).title,'existing');
   assert.equal((db.prepare('SELECT block_number FROM properties WHERE id=?').get('p1') as {block_number:null}).block_number,null);
 });

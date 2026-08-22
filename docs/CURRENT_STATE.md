@@ -6,10 +6,13 @@ Date: 2026-08-22
 
 - Isolated Expo 54 project with Android package `com.viewstate.lite`
 - Arabic-first light V001 shell and native tab navigation
-- LITE-03A1 / V0.3.0 with an optional property Block Number from 1 through 12
-- Local SQLite v4 schema with an additive, versioned migration
-- Contacts, five approved roles and Kuwait phone normalization
+- LITE-03A2 / V0.4.0 with Kuwait, GCC and international phone support
+- Local SQLite v5 schema with additive, versioned migrations
+- Multiple phone numbers per person with one Primary number
+- `contact_phones` as the authoritative source and `contacts.phone` as a transitional Primary mirror
+- Contacts, five approved roles and offline E.164 phone normalization
 - Batched device-contact import with in-memory deduplication, full-row selection, and verbatim device names/notes
+- Device-contact import preserves and imports every usable phone display value and available label
 - LITE-02.1 complete Arabic/English UI localization with locally persisted language selection
 - Complete approved contact-role and property-type labels without abbreviation
 - Blocking backup confirmation that photo and video files are not included
@@ -19,6 +22,8 @@ Date: 2026-08-22
 - Safe-share preview with owner/source/private notes always excluded and explicit PACI/location toggles
 - Text-record backup and transactional restore
 - Global search across people and properties
+- Contact and Global Search cover every stored normalized/display phone number
+- Call and WhatsApp actions are available for each explicit phone choice
 - Block Number included in property create/edit, drafts, details, Global Search and normal property sharing
 - Add-person choice between manual entry and device import
 - Contact import starts with no contacts selected
@@ -26,24 +31,25 @@ Date: 2026-08-22
 - Fast 1–10 room and bathroom selectors
 - Conditional commercial fields for floors and offices
 - Google Maps launch/link capture flow with current-location fallback
-- Additive SQLite v2, v3 and v4 migrations preserving existing records
-- Independent Database Schema V4 and Backup Format V1 contracts, with legacy backup v1–v3 restore compatibility
+- Additive SQLite v2 through v5 migrations
+- Independent Database Schema V5 and Backup Format V2 contracts
+- Backup V2 saves and restores `contactPhones`; simple Backup V1/legacy restore compatibility remains
 - Keyboard-aware forms and explicit Android text/cursor colors
 
 ## Verified
 
-- Domain and migration tests: 34 passing locally
+- Domain and migration suite expanded for international numbers, multiple numbers, Primary rules, search, actions, import and Backup V2
 - Git whitespace validation: passing
 - Current repository is independent from `viewstate-app`
 
-## LITE-03A1 data safety
+## LITE-03A2 data policy
 
-- Schema V4 adds only nullable `properties.block_number`
-- Database `CHECK` enforcement permits only `NULL` or integers 1–12
-- Existing properties are preserved and read with `blockNumber: null`
-- Legacy backups restore missing Block Number as `null`
-- New backups include Block Number in property rows
-- Downgrading to V0.2.2 hides Block Number because Schema V3 does not understand the field
+- Schema V5 adds `contact_phones` and backfills each V4 `contacts.phone` as Primary
+- The database enforces E.164 structure, per-contact uniqueness and at most one Primary
+- The Phone Repository enforces exactly one Primary and reports cross-contact conflicts
+- Cross-contact conflicts are never merged, overwritten or reassigned automatically
+- Imported names, notes, phone display values and labels remain unchanged
+- Country possibility validation stays in the offline Phone Domain Service
 
 ## Not frozen yet
 
@@ -54,3 +60,4 @@ Date: 2026-08-22
 - Complete media backup archive
 - APK installation on Honor X9
 - LITE-03A1 visual and physical-device verification in Arabic and English
+- LITE-03A2 physical-device verification for multi-number Call/WhatsApp and large contact import
