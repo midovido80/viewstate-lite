@@ -2,14 +2,14 @@
   "expo": {
     "name": "ViewState Lite",
     "slug": "viewstate-lite",
-    "version": "0.5.0",
+    "version": "0.5.1",
     "orientation": "portrait",
     "scheme": "viewstatelite",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "android": {
       "package": "com.viewstate.lite",
-      "versionCode": 8,
+      "versionCode": 9,
       "permissions": ["READ_CONTACTS", "ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
     },
     "plugins": [

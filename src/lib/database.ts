@@ -3,6 +3,8 @@ import type { Contact, ContactPhone, Property, PropertyMedia, Requirement } from
 import {BACKUP_FORMAT_VERSION,DATABASE_SCHEMA_VERSION,isSupportedBackup,LITE_03A1_MIGRATION_SQL,LITE_03A2_MIGRATION_SQL} from '@/lib/databaseContracts';
 import {phoneSearchDigits,validatePhoneSet} from '@/lib/phone';
 import {chunkValues} from '@/lib/batches';
+import {excludeKnownStoredConflicts,type LateStoredConflict} from '@/features/contacts/importPlan';
+import {writeContactPhoneBatch,type ImportTransactionDatabase} from '@/lib/contactImportWriter';
 
 const DATABASE_NAME = 'viewstate-lite.db';
 let databasePromise: Promise<SQLite.SQLiteDatabase> | null = null;
@@ -185,20 +187,17 @@ export const contactsRepository = {
       WHERE p.phone_normalized=? LIMIT 1`,phone);
     return row ? contactFromRow(row) : null;
   },
-  async importManyWithPhones(values:Array<{contact:Contact;phones:ContactPhone[]}>):Promise<void>{
-    if (!values.length) return;
+  async importManyWithPhones(values:Array<{contact:Contact;phones:ContactPhone[]}>):Promise<{importedPeople:number;savedPhones:number;lateStoredConflicts:LateStoredConflict[]}>{
+    if (!values.length) return {importedPeople:0,savedPhones:0,lateStoredConflicts:[]};
     const normalizedOwners=new Map<string,string>();for(const value of values){assertPhoneSet(value.contact.id,value.phones);for(const phone of value.phones){
       const previous=normalizedOwners.get(phone.normalized);if(previous&&previous!==value.contact.id)throw new PhoneConflictError([previous,value.contact.id]);normalizedOwners.set(phone.normalized,value.contact.id)}}
-    const db=await getDatabase();const normalized=[...normalizedOwners.keys()];const conflicts:{contact_id:string}[]=[];
-    for(const chunk of chunkValues(normalized,400)){const placeholders=chunk.map(()=>'?').join(',');conflicts.push(...await db.getAllAsync<{contact_id:string}>(
-      `SELECT DISTINCT contact_id FROM contact_phones WHERE phone_normalized IN (${placeholders})`,...chunk))}
-    if(conflicts.length)throw new PhoneConflictError(conflicts.map(row=>row.contact_id));
-    const contactStatement=await db.prepareAsync('INSERT INTO contacts(id,name,phone,role,notes,source,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)');
-    const phoneStatement=await db.prepareAsync('INSERT INTO contact_phones(id,contact_id,phone_normalized,phone_display,label,is_primary,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)');
-    try{await db.withTransactionAsync(async()=>{for(const value of values){const primary=value.phones.find(phone=>phone.isPrimary)!;
-      await contactStatement.executeAsync(value.contact.id,value.contact.name,primary.normalized,value.contact.role,value.contact.notes,value.contact.source,value.contact.createdAt,value.contact.updatedAt);
-      for(const phone of value.phones)await phoneStatement.executeAsync(phone.id,phone.contactId,phone.normalized,phone.display,phone.label,phone.isPrimary?1:0,phone.createdAt,phone.updatedAt)}})
-    }finally{await Promise.all([contactStatement.finalizeAsync(),phoneStatement.finalizeAsync()])}
+    const db=await getDatabase();const normalized=[...normalizedOwners.keys()];const conflicts:{contact_id:string;phone_normalized:string}[]=[];
+    for(const chunk of chunkValues(normalized,400)){const placeholders=chunk.map(()=>'?').join(',');conflicts.push(...await db.getAllAsync<{contact_id:string;phone_normalized:string}>(
+      `SELECT DISTINCT contact_id,phone_normalized FROM contact_phones WHERE phone_normalized IN (${placeholders})`,...chunk))}
+    const ownersByNormalized=new Map<string,string[]>();for(const conflict of conflicts){const owners=ownersByNormalized.get(conflict.phone_normalized)??[];owners.push(conflict.contact_id);ownersByNormalized.set(conflict.phone_normalized,owners)}
+    const executable=excludeKnownStoredConflicts(values,ownersByNormalized);for(const value of executable.values)assertPhoneSet(value.contact.id,value.phones);
+    await writeContactPhoneBatch(db as unknown as ImportTransactionDatabase,executable.values);
+    return {importedPeople:executable.values.length,savedPhones:executable.values.reduce((sum,value)=>sum+value.phones.length,0),lateStoredConflicts:executable.conflicts};
   },
 };
 

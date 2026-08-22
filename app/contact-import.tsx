@@ -8,14 +8,13 @@ import {ChoicePicker} from '@/components/ChoicePicker';
 import {contactsRepository,phoneRepository,PhoneConflictError} from '@/lib/database';
 import {createId} from '@/lib/id';
 import {AppHeader} from '@/components/AppHeader';
-import {candidateIsExecutable,clearVisibleSelection,executablePhones,issueCounts,prepareDeviceContactRowsChunked,removeNonExecutableSelection,resolvedRole,selectExecutable,type ImportCandidate} from '@/features/contacts/deviceImport';
-import type {Contact,ContactPhone,ContactRole} from '@/types/domain';
+import {candidateIsExecutable,clearVisibleSelection,prepareDeviceContactRowsChunked,removeNonExecutableSelection,resolvedRole,selectExecutable,type ImportCandidate} from '@/features/contacts/deviceImport';
+import {buildImportPlan,filterImportCandidates,resetSelectedRoleOverrides,selectedHasRoleOverrides,type ImportReport} from '@/features/contacts/importPlan';
+import type {ContactRole} from '@/types/domain';
 import {colors,radius,spacing} from '@/theme/tokens';
 import {getRoleLabel,useI18n} from '@/i18n/I18nContext';
 
 const ROLES:ContactRole[]=['tenant','owner','broker','real_estate_company','building_guard'];
-type ImportReport={people:number;phones:number;problems:number;invalid:number;duplicates:number;storedConflicts:number;batchConflicts:number;unselected:number};
-
 export default function ContactImport(){
   const {t,language,isRTL}=useI18n();const [items,setItems]=useState<ImportCandidate[]>([]);const [selected,setSelected]=useState<Set<string>>(()=>new Set());
   const [defaultRole,setDefaultRole]=useState<ContactRole>('tenant');const [roleOverrides,setRoleOverrides]=useState<Map<string,ContactRole>>(()=>new Map());
@@ -28,7 +27,7 @@ export default function ContactImport(){
       setItems(await prepareDeviceContactRowsChunked(inputs,storedOwners));
     }finally{setLoading(false)}})()},[t]);
 
-  const filtered=useMemo(()=>{const needle=query.trim().toLocaleLowerCase('ar-KW');return items.filter(item=>!needle||item.name.toLocaleLowerCase('ar-KW').includes(needle)||item.phones.some(phone=>phone.display.includes(needle)||phone.normalized.includes(needle)))},[items,query]);
+  const filtered=useMemo(()=>filterImportCandidates(items,query),[items,query]);
   const availableCount=useMemo(()=>items.filter(item=>candidateIsExecutable(item,assignments)).length,[items,assignments]);
   const selectedExecutableCount=useMemo(()=>items.filter(item=>selected.has(item.key)&&candidateIsExecutable(item,assignments)).length,[items,selected,assignments]);
   const roleOptions=useMemo(()=>ROLES.map(value=>({value,label:getRoleLabel(language,value)})),[language]);
@@ -39,16 +38,11 @@ export default function ContactImport(){
   const chooseBatchOwner=(normalized:string,key:string)=>{const nextAssignments=new Map(assignments);nextAssignments.set(normalized,key);setAssignments(nextAssignments);
     setSelected(old=>removeNonExecutableSelection(old,items,nextAssignments))};
   const stop=(event:GestureResponderEvent)=>event.stopPropagation();
-  const applyDefaultRole=()=>{const apply=()=>setRoleOverrides(old=>{const next=new Map(old);for(const key of selected)next.delete(key);return next});
-    if([...selected].some(key=>roleOverrides.has(key)))Alert.alert(t('replaceRoleOverridesTitle'),t('replaceRoleOverridesMessage'),[{text:t('cancel'),style:'cancel'},{text:t('applyNow'),onPress:apply}]);else apply()};
+  const applyDefaultRole=()=>{const apply=()=>setRoleOverrides(old=>resetSelectedRoleOverrides(selected,old));
+    if(selectedHasRoleOverrides(selected,roleOverrides))Alert.alert(t('replaceRoleOverridesTitle'),t('replaceRoleOverridesMessage'),[{text:t('cancel'),style:'cancel'},{text:t('applyNow'),onPress:apply}]);else apply()};
 
-  const run=async()=>{const selectedItems=items.filter(item=>selected.has(item.key)&&candidateIsExecutable(item,assignments));if(!selectedItems.length)return;
-    const now=new Date().toISOString();let phoneCount=0;let invalid=0;let duplicates=0;let storedConflicts=0;let batchConflicts=0;
-    const values=selectedItems.map(item=>{const usable=executablePhones(item,assignments);const counts=issueCounts(item,assignments);invalid+=counts.invalid;duplicates+=counts.duplicates;storedConflicts+=counts.storedConflicts;batchConflicts+=counts.batchConflicts;
-      const contactId=createId('contact');phoneCount+=usable.length;const primary=usable[0]!;
-      const contact:Contact={id:contactId,name:item.name,phone:primary.normalized,role:resolvedRole(item.key,defaultRole,roleOverrides),notes:item.notes,source:'device',createdAt:now,updatedAt:now};
-      const phones:ContactPhone[]=usable.map((phone,index)=>({id:createId('phone'),contactId,normalized:phone.normalized,display:phone.display,label:phone.label,isPrimary:index===0,createdAt:now,updatedAt:now}));return {contact,phones}});
-    setImporting(true);try{await contactsRepository.importManyWithPhones(values);setReport({people:values.length,phones:phoneCount,problems:invalid+duplicates+storedConflicts+batchConflicts,invalid,duplicates,storedConflicts,batchConflicts,unselected:items.length-selected.size})}
+  const run=async()=>{const plan=buildImportPlan({candidates:items,selected,assignments,defaultRole,roleOverrides,now:new Date().toISOString(),createIdentifier:createId});if(!plan.values.length)return;
+    setImporting(true);try{const result=await contactsRepository.importManyWithPhones(plan.values);const late=result.lateStoredConflicts.length;setReport({...plan.report,people:result.importedPeople,phones:result.savedPhones,storedConflicts:plan.report.storedConflicts+late,problems:plan.report.problems+late})}
     catch(error){Alert.alert(t('importDone'),error instanceof PhoneConflictError?t('phoneConflictGeneric'):t('importTechnicalFailure'))}finally{setImporting(false)}};
 
   return <SafeAreaView style={styles.page} edges={['top']}><AppHeader title={t('importContacts')}/><View style={styles.body}>
