@@ -56,6 +56,7 @@ export interface Property {
   title: string;
   type: PropertyType;
   area: string;
+  blockNumber: number | null;
   monthlyRent: number;
   bedrooms: number | null;
   bathrooms: number | null;

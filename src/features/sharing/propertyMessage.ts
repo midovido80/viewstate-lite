@@ -20,6 +20,7 @@ export function createPropertyMessage(property: Property,options:PropertyMessage
     `📍 ${property.area}`,
     arabic?`💰 ${currency} د.ك شهريًا`:`💰 KWD ${currency} monthly`,
   ];
+  if (property.blockNumber !== null) lines.splice(2,0,arabic?`🏘️ رقم القطعة: ${property.blockNumber}`:`🏘️ Block number: ${property.blockNumber}`);
   if (property.bedrooms !== null) lines.push(arabic?`🛏️ ${property.bedrooms} غرف`:`🛏️ ${property.bedrooms} bedrooms`);
   if (property.bathrooms !== null) lines.push(arabic?`🚿 ${property.bathrooms} حمام`:`🚿 ${property.bathrooms} bathrooms`);
   if (property.paciNumberCount !== null) lines.push(arabic?`🔢 ${property.paciNumberCount} أرقام آلية`:`🔢 ${property.paciNumberCount} PACI numbers`);
