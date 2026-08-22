@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {candidateIsExecutable,clearVisibleSelection,executablePhones,issueCounts,prepareDeviceContactRows,prepareDeviceContactRowsChunked,removeNonExecutableSelection,resolvedRole,selectExecutable} from '../src/features/contacts/deviceImport.ts';
+import {chunkValues} from '../src/lib/batches.ts';
 
 test('keeps a contact visible and imports its valid number when another number is invalid',()=>{
   const [candidate]=prepareDeviceContactRows([{key:'a',name:'Exact Name',notes:' Note ',phones:[{number:'bad'},{number:'5555 1234',label:'بيت'}]}],[]);
@@ -44,4 +45,8 @@ test('individual role overrides win while untouched rows follow the changing bat
 test('chunked preparation yields between chunks and normalizes 5000 synthetic contacts',async()=>{
   const inputs=Array.from({length:5000},(_,index)=>({key:`c${index}`,name:`Contact ${index}`,phones:[{number:`+1${String(2020000000+index)}`}]}));let yields=0;
   const result=await prepareDeviceContactRowsChunked(inputs,[],100,async()=>{yields++});assert.equal(result.length,5000);assert.equal(yields,49);
+});
+
+test('database preflight chunks large parameter sets below SQLite variable limits',()=>{
+  const chunks=chunkValues(Array.from({length:5000},(_,index)=>index),400);assert.equal(chunks.length,13);assert.equal(chunks[0]!.length,400);assert.equal(chunks.at(-1)!.length,200);
 });
