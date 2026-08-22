@@ -44,7 +44,7 @@ jobs:
           profile: pixel_5
           disable-animations: true
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
-          script: mkdir -p qa-results; CI=1 pnpm exec expo start --localhost > qa-results/metro.log 2>&1 & metro_pid=$!; adb reverse tcp:8081 tcp:8081; adb install -r android/app/build/outputs/apk/debug/app-debug.apk; sleep 10; for flow in .maestro/01-tabs.yaml .maestro/02-contact-crud.yaml .maestro/03-property-crud.yaml .maestro/04-requirement-match.yaml .maestro/05-more-and-import.yaml; do name=$(basename "$flow" .yaml); maestro test "$flow" --format junit --output "qa-results/$name.xml" || true; done; adb logcat -d '*:E' > qa-results/android-errors.log; kill "$metro_pid" || true
+          script: mkdir -p qa-results; CI=1 pnpm exec expo start --localhost > qa-results/metro.log 2>&1 & metro_pid=$!; adb reverse tcp:8081 tcp:8081; adb install -r android/app/build/outputs/apk/debug/app-debug.apk; sleep 10; for flow in .maestro/01-tabs.yaml .maestro/02-contact-crud.yaml .maestro/03-property-crud.yaml .maestro/04-requirement-match.yaml .maestro/05-more-and-import.yaml .maestro/06-global-search.yaml .maestro/07-share-and-phone-actions.yaml; do name=$(basename "$flow" .yaml); maestro test "$flow" --format junit --output "qa-results/$name.xml" || true; done; adb logcat -d '*:E' > qa-results/android-errors.log; kill "$metro_pid" || true
       - name: Upload QA evidence
         if: always()
         uses: actions/upload-artifact@v4
