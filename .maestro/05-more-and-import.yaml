@@ -10,11 +10,15 @@ appId: com.viewstate.lite
 - tapOn: "إلغاء"
 - tapOn: "إنشاء ومشاركة نسخة احتياطية"
 - tapOn: "متابعة وإنشاء النسخة"
+- assertVisible: "Share with"
 - takeScreenshot: "backup-share-sheet"
 - pressKey: BACK
 - tapOn: "استعادة نسخة احتياطية"
+- assertVisible: "Recent"
 - takeScreenshot: "backup-restore-picker"
 - pressKey: BACK
+- assertVisible: "تمت الاستعادة"
+- tapOn: "OK"
 - tapOn: "الرئيسية"
 - tapOn: "استيراد من الهاتف"
 - tapOn:
