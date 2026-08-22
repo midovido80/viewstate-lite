@@ -6,12 +6,16 @@ Date: 2026-08-22
 
 - Isolated Expo 54 project with Android package `com.viewstate.lite`
 - Arabic-first light V001 shell and native tab navigation
-- LITE-03A2 / V0.4.0 with Kuwait, GCC and international phone support
+- LITE-03A3 / V0.5.0 with controlled batch contact import
 - Local SQLite v5 schema with additive, versioned migrations
 - Multiple phone numbers per person with one Primary number
 - `contact_phones` as the authoritative source and `contacts.phone` as a transitional Primary mirror
 - Contacts, five approved roles and offline E.164 phone normalization
-- Batched device-contact import with in-memory deduplication, full-row selection, and verbatim device names/notes
+- Batched device-contact import with default/per-row roles, full-row selection, visible-result controls, and verbatim device names/notes
+- Phone-level import preflight keeps valid numbers executable while reporting invalid, duplicate, stored and intra-batch conflicts
+- Intra-batch shared numbers use an explicit single-owner radio choice with no first-row winner
+- Atomic executable-row import with full rollback on an unexpected technical write failure
+- Compact transient import summary with expandable issue details
 - Device-contact import preserves and imports every usable phone display value and available label
 - LITE-02.1 complete Arabic/English UI localization with locally persisted language selection
 - Complete approved contact-role and property-type labels without abbreviation
@@ -39,6 +43,7 @@ Date: 2026-08-22
 ## Verified
 
 - Domain and migration suite expanded for international numbers, multiple numbers, Primary rules, search, actions, import and Backup V2
+- Import-control suite covers mixed valid/invalid rows, phone-level conflicts, batch ownership, selection, role overrides and 5,000-contact synthetic preparation
 - Git whitespace validation: passing
 - Current repository is independent from `viewstate-app`
 

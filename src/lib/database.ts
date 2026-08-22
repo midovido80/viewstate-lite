@@ -2,6 +2,7 @@ import * as SQLite from 'expo-sqlite';
 import type { Contact, ContactPhone, Property, PropertyMedia, Requirement } from '@/types/domain';
 import {BACKUP_FORMAT_VERSION,DATABASE_SCHEMA_VERSION,isSupportedBackup,LITE_03A1_MIGRATION_SQL,LITE_03A2_MIGRATION_SQL} from '@/lib/databaseContracts';
 import {phoneSearchDigits,validatePhoneSet} from '@/lib/phone';
+import {chunkValues} from '@/lib/batches';
 
 const DATABASE_NAME = 'viewstate-lite.db';
 let databasePromise: Promise<SQLite.SQLiteDatabase> | null = null;
@@ -186,7 +187,18 @@ export const contactsRepository = {
   },
   async importManyWithPhones(values:Array<{contact:Contact;phones:ContactPhone[]}>):Promise<void>{
     if (!values.length) return;
-    for(const value of values)await contactsRepository.upsertWithPhones(value.contact,value.phones);
+    const normalizedOwners=new Map<string,string>();for(const value of values){assertPhoneSet(value.contact.id,value.phones);for(const phone of value.phones){
+      const previous=normalizedOwners.get(phone.normalized);if(previous&&previous!==value.contact.id)throw new PhoneConflictError([previous,value.contact.id]);normalizedOwners.set(phone.normalized,value.contact.id)}}
+    const db=await getDatabase();const normalized=[...normalizedOwners.keys()];const conflicts:{contact_id:string}[]=[];
+    for(const chunk of chunkValues(normalized,400)){const placeholders=chunk.map(()=>'?').join(',');conflicts.push(...await db.getAllAsync<{contact_id:string}>(
+      `SELECT DISTINCT contact_id FROM contact_phones WHERE phone_normalized IN (${placeholders})`,...chunk))}
+    if(conflicts.length)throw new PhoneConflictError(conflicts.map(row=>row.contact_id));
+    const contactStatement=await db.prepareAsync('INSERT INTO contacts(id,name,phone,role,notes,source,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)');
+    const phoneStatement=await db.prepareAsync('INSERT INTO contact_phones(id,contact_id,phone_normalized,phone_display,label,is_primary,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)');
+    try{await db.withTransactionAsync(async()=>{for(const value of values){const primary=value.phones.find(phone=>phone.isPrimary)!;
+      await contactStatement.executeAsync(value.contact.id,value.contact.name,primary.normalized,value.contact.role,value.contact.notes,value.contact.source,value.contact.createdAt,value.contact.updatedAt);
+      for(const phone of value.phones)await phoneStatement.executeAsync(phone.id,phone.contactId,phone.normalized,phone.display,phone.label,phone.isPrimary?1:0,phone.createdAt,phone.updatedAt)}})
+    }finally{await Promise.all([contactStatement.finalizeAsync(),phoneStatement.finalizeAsync()])}
   },
 };
 
@@ -201,6 +213,8 @@ async function insertPhone(db:SQLite.SQLiteDatabase,phone:ContactPhone):Promise<
 
 export const phoneRepository={
   async listAll():Promise<ContactPhone[]>{const db=await getDatabase();const rows=await db.getAllAsync<any>('SELECT * FROM contact_phones');return rows.map(phoneFromRow)},
+  async listAllWithOwners():Promise<Array<{normalized:string;contactId:string;contactName:string}>>{const db=await getDatabase();const rows=await db.getAllAsync<any>(
+    'SELECT p.phone_normalized,c.id AS contact_id,c.name AS contact_name FROM contact_phones p JOIN contacts c ON c.id=p.contact_id');return rows.map(row=>({normalized:row.phone_normalized,contactId:row.contact_id,contactName:row.contact_name}))},
   async listForContact(contactId:string):Promise<ContactPhone[]>{const db=await getDatabase();const rows=await db.getAllAsync<any>(
     'SELECT * FROM contact_phones WHERE contact_id=? ORDER BY is_primary DESC,created_at',contactId);return rows.map(phoneFromRow)},
   async conflicts(normalized:string,excludeContactId?:string):Promise<Contact[]>{const db=await getDatabase();const rows=await db.getAllAsync<any>(
