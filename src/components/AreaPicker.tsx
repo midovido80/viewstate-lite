@@ -1,0 +1,66 @@
+import {Ionicons} from '@expo/vector-icons';
+import {useMemo,useState} from 'react';
+import {Modal,Pressable,SafeAreaView,SectionList,StyleSheet,Text,TextInput,View} from 'react-native';
+import {filterKuwaitAreaGroups,governorateForArea} from '@/data/kuwaitAreas';
+import {useI18n} from '@/i18n/I18nContext';
+import {colors,radius,spacing} from '@/theme/tokens';
+
+export function AreaPicker({value,onChange}:{value:string;onChange:(area:string)=>void}) {
+  const {language,isRTL,t}=useI18n();
+  const [open,setOpen]=useState(false);
+  const [query,setQuery]=useState('');
+  const sections=useMemo(()=>filterKuwaitAreaGroups(query).map(group=>({title:group.governorate,data:[...group.areas]})),[query]);
+  const governorate=value?governorateForArea(value):null;
+  const close=()=>{setOpen(false);setQuery('')};
+  return <>
+    <View style={styles.fieldWrap}>
+      <Text style={[styles.label,{textAlign:isRTL?'right':'left'}]}>{t('area')} *</Text>
+      <Pressable accessibilityRole="button" onPress={()=>setOpen(true)} style={[styles.selector,{flexDirection:isRTL?'row':'row-reverse'}]}>
+        <Ionicons name="chevron-down" size={20} color={colors.blue}/>
+        <View style={styles.selectedText}>
+          <Text style={[styles.value,{textAlign:isRTL?'right':'left'},!value&&styles.placeholder]}>{value||(language==='ar'?'اختر المنطقة من مناطق الكويت':'Choose a Kuwait area')}</Text>
+          {governorate?<Text style={[styles.governorate,{textAlign:isRTL?'right':'left'}]}>{governorate}</Text>:null}
+        </View>
+        <Ionicons name="location-outline" size={22} color={colors.red}/>
+      </Pressable>
+    </View>
+    <Modal visible={open} animationType="slide" onRequestClose={close}>
+      <SafeAreaView style={styles.modalPage}>
+        <View style={[styles.modalHeader,{flexDirection:isRTL?'row':'row-reverse'}]}>
+          <Pressable onPress={close} hitSlop={12}><Ionicons name="close" size={28} color="white"/></Pressable>
+          <Text style={styles.modalTitle}>{language==='ar'?'اختر المنطقة':'Choose area'}</Text>
+        </View>
+        <View style={[styles.search,{flexDirection:isRTL?'row-reverse':'row'}]}>
+          <Ionicons name="search" size={21} color={colors.muted}/>
+          <TextInput autoFocus value={query} onChangeText={setQuery} placeholder={language==='ar'?'اكتب أول حرفين مثل: سل':'Type the first letters'}
+            placeholderTextColor={colors.muted} selectionColor={colors.blue} cursorColor={colors.blue}
+            style={[styles.searchInput,{textAlign:isRTL?'right':'left'}]}/>
+        </View>
+        <SectionList sections={sections} keyExtractor={item=>item} keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.list}
+          ListEmptyComponent={<Text style={styles.empty}>{language==='ar'?'لا توجد منطقة مطابقة':'No matching area'}</Text>}
+          renderSectionHeader={({section})=><Text style={[styles.section,{textAlign:isRTL?'right':'left'}]}>{section.title}</Text>}
+          renderItem={({item})=><Pressable onPress={()=>{onChange(item);close()}} style={[styles.row,{flexDirection:isRTL?'row':'row-reverse'},item===value&&styles.selectedRow]}>
+            <Ionicons name={item===value?'checkmark-circle':'ellipse-outline'} size={22} color={item===value?colors.blue:colors.border}/>
+            <Text style={[styles.rowText,{textAlign:isRTL?'right':'left'}]}>{item}</Text>
+          </Pressable>}/>
+      </SafeAreaView>
+    </Modal>
+  </>;
+}
+
+const styles=StyleSheet.create({
+  fieldWrap:{gap:spacing.xs},label:{fontSize:15,fontWeight:'600',color:colors.text,textAlign:'right'},
+  selector:{minHeight:58,borderWidth:1,borderColor:colors.border,borderRadius:radius.sm,paddingHorizontal:spacing.md,
+    flexDirection:'row',alignItems:'center',gap:spacing.sm,backgroundColor:'white'},
+  selectedText:{flex:1},value:{fontSize:16,color:colors.text,textAlign:'right',fontWeight:'600'},placeholder:{color:colors.muted,fontWeight:'400'},
+  governorate:{fontSize:12,color:colors.muted,textAlign:'right',marginTop:3},modalPage:{flex:1,backgroundColor:colors.background},
+  modalHeader:{backgroundColor:colors.blue,padding:spacing.md,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},
+  modalTitle:{color:'white',fontSize:21,fontWeight:'700'},search:{margin:spacing.md,minHeight:50,borderWidth:1,borderColor:colors.border,
+    borderRadius:radius.md,backgroundColor:'white',paddingHorizontal:spacing.md,flexDirection:'row-reverse',alignItems:'center',gap:spacing.sm},
+  searchInput:{flex:1,fontSize:16,textAlign:'right',color:'#1A1A1A',backgroundColor:'#FFFFFF'},list:{paddingHorizontal:spacing.md,paddingBottom:spacing.xl},
+  section:{backgroundColor:colors.surface,color:colors.red,fontSize:17,fontWeight:'800',textAlign:'right',padding:spacing.sm,
+    marginTop:spacing.sm,borderRadius:radius.sm},row:{minHeight:50,borderBottomWidth:1,borderBottomColor:colors.border,
+    flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:spacing.sm},
+  selectedRow:{backgroundColor:'#EEF5FF'},rowText:{fontSize:16,textAlign:'right',color:colors.text},empty:{textAlign:'center',color:colors.muted,marginTop:60,fontSize:17},
+});
