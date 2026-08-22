@@ -1,6 +1,7 @@
 import * as SQLite from 'expo-sqlite';
-import type { Contact, Property, PropertyMedia, Requirement } from '@/types/domain';
-import {BACKUP_FORMAT_VERSION,DATABASE_SCHEMA_VERSION,isSupportedBackup,LITE_03A1_MIGRATION_SQL} from '@/lib/databaseContracts';
+import type { Contact, ContactPhone, Property, PropertyMedia, Requirement } from '@/types/domain';
+import {BACKUP_FORMAT_VERSION,DATABASE_SCHEMA_VERSION,isSupportedBackup,LITE_03A1_MIGRATION_SQL,LITE_03A2_MIGRATION_SQL} from '@/lib/databaseContracts';
+import {phoneSearchDigits,validatePhoneSet} from '@/lib/phone';
 
 const DATABASE_NAME = 'viewstate-lite.db';
 let databasePromise: Promise<SQLite.SQLiteDatabase> | null = null;
@@ -101,6 +102,7 @@ async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
     `);
   }
   if (version < 4) await db.execAsync(LITE_03A1_MIGRATION_SQL);
+  if (version < 5) await db.execAsync(LITE_03A2_MIGRATION_SQL);
 }
 
 export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
@@ -116,6 +118,13 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
 function contactFromRow(row: any): Contact {
   return { id: row.id, name: row.name, phone: row.phone, role: row.role, notes: row.notes,
     source: row.source, createdAt: row.created_at, updatedAt: row.updated_at };
+}
+
+function phoneFromRow(row:any):ContactPhone{return {id:row.id,contactId:row.contact_id,normalized:row.phone_normalized,
+  display:row.phone_display,label:row.label,isPrimary:Boolean(row.is_primary),createdAt:row.created_at,updatedAt:row.updated_at}}
+
+export class PhoneConflictError extends Error{
+  constructor(public readonly contactIds:string[]){super('Phone number belongs to another person');this.name='PhoneConflictError'}
 }
 
 function propertyFromRow(row: any): Property {
@@ -141,8 +150,11 @@ export const contactsRepository = {
   async list(query = ''): Promise<Contact[]> {
     const db = await getDatabase();
     const pattern = `%${query.trim()}%`;
+    const digits=phoneSearchDigits(query);const digitPattern=digits?`%${digits}%`:'__NO_PHONE_MATCH__';
     const rows = await db.getAllAsync<any>(
-      'SELECT * FROM contacts WHERE name LIKE ? OR phone LIKE ? ORDER BY updated_at DESC', pattern, pattern);
+      `SELECT * FROM contacts c WHERE c.name LIKE ? OR c.phone LIKE ? OR EXISTS(
+        SELECT 1 FROM contact_phones p WHERE p.contact_id=c.id AND (p.phone_display LIKE ? OR p.phone_normalized LIKE ?)
+      ) ORDER BY c.updated_at DESC`,pattern,pattern,pattern,digitPattern);
     return rows.map(contactFromRow);
   },
   async get(id: string): Promise<Contact | null> {
@@ -150,31 +162,50 @@ export const contactsRepository = {
     const row = await db.getFirstAsync<any>('SELECT * FROM contacts WHERE id = ?', id);
     return row ? contactFromRow(row) : null;
   },
-  async upsert(value: Contact): Promise<void> {
+  async upsertWithPhones(value:Contact,phones:ContactPhone[]):Promise<void>{
+    assertPhoneSet(value.id,phones);
     const db = await getDatabase();
-    await db.runAsync(`INSERT INTO contacts(id,name,phone,role,notes,source,created_at,updated_at)
-      VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, phone=excluded.phone,
-      role=excluded.role, notes=excluded.notes, updated_at=excluded.updated_at`,
-      value.id, value.name, value.phone, value.role, value.notes, value.source, value.createdAt, value.updatedAt);
+    const normalized=phones.map(phone=>phone.normalized);const placeholders=normalized.map(()=>'?').join(',');
+    const conflicts=await db.getAllAsync<{contact_id:string}>(`SELECT DISTINCT contact_id FROM contact_phones
+      WHERE contact_id<>? AND phone_normalized IN (${placeholders})`,value.id,...normalized);
+    if(conflicts.length)throw new PhoneConflictError(conflicts.map(row=>row.contact_id));
+    const primary=phones.find(phone=>phone.isPrimary)!;
+    await db.withTransactionAsync(async()=>{
+      await db.runAsync(`INSERT INTO contacts(id,name,phone,role,notes,source,created_at,updated_at)
+        VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,phone=excluded.phone,
+        role=excluded.role,notes=excluded.notes,updated_at=excluded.updated_at`,value.id,value.name,primary.normalized,value.role,value.notes,value.source,value.createdAt,value.updatedAt);
+      await db.runAsync('DELETE FROM contact_phones WHERE contact_id=?',value.id);
+      for(const phone of phones)await insertPhone(db,phone);
+    });
   },
   async findByPhone(phone: string): Promise<Contact | null> {
     const db = await getDatabase();
-    const row = await db.getFirstAsync<any>('SELECT * FROM contacts WHERE phone = ?', phone);
+    const row = await db.getFirstAsync<any>(`SELECT c.* FROM contacts c JOIN contact_phones p ON p.contact_id=c.id
+      WHERE p.phone_normalized=? LIMIT 1`,phone);
     return row ? contactFromRow(row) : null;
   },
-  async importMany(values: Contact[]): Promise<void> {
+  async importManyWithPhones(values:Array<{contact:Contact;phones:ContactPhone[]}>):Promise<void>{
     if (!values.length) return;
-    const db = await getDatabase();
-    await db.withTransactionAsync(async () => {
-      for (const value of values) {
-        await db.runAsync(`INSERT INTO contacts(id,name,phone,role,notes,source,created_at,updated_at)
-          VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(phone) DO UPDATE SET
-          name=CASE WHEN contacts.name='' THEN excluded.name ELSE contacts.name END,
-          notes=CASE WHEN contacts.notes='' THEN excluded.notes ELSE contacts.notes END,
-          updated_at=excluded.updated_at`, value.id,value.name,value.phone,value.role,value.notes,value.source,value.createdAt,value.updatedAt);
-      }
-    });
+    for(const value of values)await contactsRepository.upsertWithPhones(value.contact,value.phones);
   },
+};
+
+function assertPhoneSet(contactId:string,phones:ContactPhone[]):void{
+  validatePhoneSet(phones);
+  if(phones.some(phone=>phone.contactId!==contactId))throw new Error('Phone contact mismatch');
+}
+
+async function insertPhone(db:SQLite.SQLiteDatabase,phone:ContactPhone):Promise<void>{await db.runAsync(
+  `INSERT INTO contact_phones(id,contact_id,phone_normalized,phone_display,label,is_primary,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)`,
+  phone.id,phone.contactId,phone.normalized,phone.display,phone.label,phone.isPrimary?1:0,phone.createdAt,phone.updatedAt)}
+
+export const phoneRepository={
+  async listAll():Promise<ContactPhone[]>{const db=await getDatabase();const rows=await db.getAllAsync<any>('SELECT * FROM contact_phones');return rows.map(phoneFromRow)},
+  async listForContact(contactId:string):Promise<ContactPhone[]>{const db=await getDatabase();const rows=await db.getAllAsync<any>(
+    'SELECT * FROM contact_phones WHERE contact_id=? ORDER BY is_primary DESC,created_at',contactId);return rows.map(phoneFromRow)},
+  async conflicts(normalized:string,excludeContactId?:string):Promise<Contact[]>{const db=await getDatabase();const rows=await db.getAllAsync<any>(
+    `SELECT DISTINCT c.* FROM contacts c JOIN contact_phones p ON p.contact_id=c.id WHERE p.phone_normalized=? AND (? IS NULL OR c.id<>?)`,
+    normalized,excludeContactId??null,excludeContactId??null);return rows.map(contactFromRow)},
 };
 
 export const propertiesRepository = {
@@ -234,9 +265,12 @@ export const globalSearchRepository = {
     if (!trimmed) return {contacts:[],properties:[]};
     const db=await getDatabase();
     const pattern=`%${trimmed}%`;
+    const digits=phoneSearchDigits(trimmed);const digitPattern=digits?`%${digits}%`:'__NO_PHONE_MATCH__';
     const [contactRows,propertyRows]=await Promise.all([
-      db.getAllAsync<any>(`SELECT * FROM contacts
-        WHERE name LIKE ? OR phone LIKE ? OR notes LIKE ? ORDER BY updated_at DESC LIMIT 50`,pattern,pattern,pattern),
+      db.getAllAsync<any>(`SELECT * FROM contacts c
+        WHERE c.name LIKE ? OR c.phone LIKE ? OR c.notes LIKE ? OR EXISTS(
+          SELECT 1 FROM contact_phones p WHERE p.contact_id=c.id AND (p.phone_display LIKE ? OR p.phone_normalized LIKE ?)
+        ) ORDER BY c.updated_at DESC LIMIT 50`,pattern,pattern,pattern,pattern,digitPattern),
       db.getAllAsync<any>(`SELECT * FROM properties
         WHERE title LIKE ? OR area LIKE ? OR paci LIKE ? OR description LIKE ? OR CAST(block_number AS TEXT) LIKE ?
         ORDER BY updated_at DESC LIMIT 50`,pattern,pattern,pattern,pattern,pattern),
@@ -292,11 +326,11 @@ export const draftsRepository = {
 
 export async function exportSnapshot(): Promise<string> {
   const db = await getDatabase();
-  const [contacts,requirements,properties,media] = await Promise.all([
-    db.getAllAsync('SELECT * FROM contacts'), db.getAllAsync('SELECT * FROM requirements'),
-    db.getAllAsync('SELECT * FROM properties'), db.getAllAsync('SELECT * FROM property_media')]);
+  const [contacts,contactPhones,requirements,properties,media] = await Promise.all([
+    db.getAllAsync('SELECT * FROM contacts'),db.getAllAsync('SELECT * FROM contact_phones'),db.getAllAsync('SELECT * FROM requirements'),
+    db.getAllAsync('SELECT * FROM properties'),db.getAllAsync('SELECT * FROM property_media')]);
   return JSON.stringify({format:'viewstate-lite',backupFormatVersion:BACKUP_FORMAT_VERSION,databaseSchemaVersion:DATABASE_SCHEMA_VERSION,exportedAt:new Date().toISOString(),
-    data:{contacts,requirements,properties,media}}, null, 2);
+    data:{contacts,contactPhones,requirements,properties,media}}, null, 2);
 }
 
 export async function restoreSnapshot(json: string): Promise<void> {
@@ -304,13 +338,20 @@ export async function restoreSnapshot(json: string): Promise<void> {
   if (!isSupportedBackup(snapshot)) {
     throw new Error('Unsupported backup format');
   }
-  const { contacts = [], requirements = [], properties = [], media = [] } = snapshot.data;
-  if (![contacts, requirements, properties, media].every(Array.isArray)) throw new Error('Invalid backup data');
+  const { contacts = [], contactPhones = [], requirements = [], properties = [], media = [] } = snapshot.data;
+  if (![contacts, contactPhones, requirements, properties, media].every(Array.isArray)) throw new Error('Invalid backup data');
+  const isV2=snapshot.backupFormatVersion===2;
+  if(isV2&&!contactPhones.length&&contacts.length)throw new Error('Backup V2 is missing contact phones');
   const db = await getDatabase();
   await db.withTransactionAsync(async () => {
     for (const row of contacts) await db.runAsync(`INSERT INTO contacts(id,name,phone,role,notes,source,created_at,updated_at)
       VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,phone=excluded.phone,role=excluded.role,
       notes=excluded.notes,source=excluded.source,updated_at=excluded.updated_at`, row.id,row.name,row.phone,row.role,row.notes,row.source,row.created_at,row.updated_at);
+    for(const row of contacts)await db.runAsync('DELETE FROM contact_phones WHERE contact_id=?',row.id);
+    if(isV2){for(const row of contactPhones)await db.runAsync(`INSERT INTO contact_phones(id,contact_id,phone_normalized,phone_display,label,is_primary,created_at,updated_at)
+      VALUES(?,?,?,?,?,?,?,?)`,row.id,row.contact_id,row.phone_normalized,row.phone_display,row.label??'',row.is_primary?1:0,row.created_at,row.updated_at)}
+    else {for(const row of contacts)await db.runAsync(`INSERT INTO contact_phones(id,contact_id,phone_normalized,phone_display,label,is_primary,created_at,updated_at)
+      VALUES(?,?,?,?,?,1,?,?)`,createLegacyPhoneId(row.id),row.id,row.phone,row.phone,'',row.created_at,row.updated_at)}
     for (const row of properties) await db.runAsync(`INSERT INTO properties(id,title,type,area,block_number,monthly_rent,bedrooms,bathrooms,size_sqm,furnishing,description,private_notes,
       paci,map_url,latitude,longitude,paci_number_count,activity_type,owner_contact_id,offered_by_contact_id,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
       title=excluded.title,type=excluded.type,area=excluded.area,block_number=excluded.block_number,monthly_rent=excluded.monthly_rent,bedrooms=excluded.bedrooms,bathrooms=excluded.bathrooms,
@@ -327,3 +368,5 @@ export async function restoreSnapshot(json: string): Promise<void> {
       row.id,row.property_id,row.uri,row.kind,row.sort_order,row.created_at);
   });
 }
+
+function createLegacyPhoneId(contactId:string):string{return `legacy-phone:${contactId}`}

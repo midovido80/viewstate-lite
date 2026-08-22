@@ -35,6 +35,17 @@ export interface Contact {
   updatedAt: string;
 }
 
+export interface ContactPhone {
+  id: string;
+  contactId: string;
+  normalized: string;
+  display: string;
+  label: string;
+  isPrimary: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Requirement {
   id: string;
   contactId: string;
