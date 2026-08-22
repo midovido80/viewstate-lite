@@ -49,6 +49,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: viewstate-lite-v0.4.0-lite-03a2-apk
+          name: viewstate-lite-v0.5.0-lite-03a3-apk
           path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
