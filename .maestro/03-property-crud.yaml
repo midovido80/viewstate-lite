@@ -9,9 +9,8 @@ appId: com.viewstate.lite
 - hideKeyboard
 - tapOn:
     id: "property-area"
-- inputText: "السالمية"
 - hideKeyboard
-- tapOn: "السالمية"
+- tapOn: "مدينة الكويت"
 - tapOn:
     id: "property-block"
 - assertVisible: "12"
@@ -68,4 +67,3 @@ appId: com.viewstate.lite
     direction: DOWN
 - tapOn: "حفظ العقار"
 - assertVisible: "QA Salmiya Apartment Edited"
-
