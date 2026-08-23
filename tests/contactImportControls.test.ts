@@ -49,8 +49,8 @@ test('chunked preparation yields between chunks and normalizes 5000 synthetic co
 
 test('folds an Android service shadow into its real contact without changing name or notes',()=>{
   const candidates=prepareDeviceContactRows([
-    {key:'real',name:'بوجابر',notes:'ملاحظة حرفية  ',phones:[{number:'+965666530276',label:'mobile'}]},
-    {key:'service-shadow',name:'+965666530276',notes:'',phones:[{number:'+965666530276',label:'Messages'}]},
+    {key:'real',name:'بوجابر',notes:'ملاحظة حرفية  ',phones:[{number:'+96566653027',label:'mobile'}]},
+    {key:'service-shadow',name:'+96566653027',notes:'',phones:[{number:'+96566653027',label:'Messages'}]},
   ],[]);
   assert.equal(candidates.length,1);assert.equal(candidates[0]!.key,'real');assert.equal(candidates[0]!.name,'بوجابر');
   assert.equal(candidates[0]!.notes,'ملاحظة حرفية  ');assert.equal(candidates[0]!.phones.length,1);assert.deepEqual(candidates[0]!.phones[0]!.batchContactKeys,['real']);
