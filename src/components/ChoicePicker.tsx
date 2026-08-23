@@ -18,11 +18,11 @@ export function ChoicePicker<T extends string>({label,value,placeholder,options,
       <Ionicons name="chevron-down" size={20} color={colors.blue}/>
       <Text style={[styles.value,{textAlign:isRTL?'right':'left'},!selected&&styles.placeholder]}>{selected?.label??placeholder}</Text>
     </Pressable>
-    <Modal visible={open} transparent animationType="fade" onRequestClose={()=>setOpen(false)}>
+    <Modal visible={open} transparent animationType="none" hardwareAccelerated onRequestClose={()=>setOpen(false)}>
       <Pressable style={styles.backdrop} onPress={()=>setOpen(false)}>
         <SafeAreaView style={styles.sheet}>
           <Text style={styles.title}>{label}</Text>
-          <ScrollView>{options.map(option=><Pressable key={option.value} onPress={()=>{onChange(option.value);setOpen(false)}} style={styles.row}>
+          <ScrollView keyboardShouldPersistTaps="always">{options.map(option=><Pressable key={option.value} onPress={()=>{onChange(option.value);setOpen(false)}} style={styles.row}>
             <Ionicons name={option.value===value?'checkmark-circle':'ellipse-outline'} size={23} color={option.value===value?colors.blue:colors.border}/>
             <Text style={styles.rowText}>{option.label}</Text>
           </Pressable>)}</ScrollView>
@@ -38,5 +38,5 @@ const styles=StyleSheet.create({wrap:{gap:spacing.xs},label:{fontSize:15,fontWei
   placeholder:{color:colors.muted},backdrop:{flex:1,backgroundColor:'rgba(8,25,45,.45)',justifyContent:'flex-end'},
   sheet:{backgroundColor:'white',padding:spacing.md,borderTopLeftRadius:radius.lg,borderTopRightRadius:radius.lg,maxHeight:'85%'},
   title:{fontSize:20,fontWeight:'800',color:colors.red,textAlign:'right',marginBottom:spacing.sm},
-  row:{minHeight:54,borderBottomWidth:1,borderBottomColor:colors.border,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},
-  rowText:{fontSize:16,color:colors.text,textAlign:'right'}});
+  row:{minHeight:54,borderBottomWidth:1,borderBottomColor:colors.border,flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:spacing.sm,paddingVertical:8},
+  rowText:{flex:1,flexShrink:1,fontSize:16,lineHeight:23,color:colors.text,textAlign:'right'}});

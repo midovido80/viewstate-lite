@@ -5,5 +5,5 @@ type Props=ScrollViewProps;
 
 export function KeyboardAwareScrollViewCompat({children,keyboardShouldPersistTaps='handled',...props}:Props){
   if(Platform.OS==='web')return <ScrollView keyboardShouldPersistTaps={keyboardShouldPersistTaps} {...props}>{children}</ScrollView>;
-  return <KeyboardAwareScrollView keyboardShouldPersistTaps={keyboardShouldPersistTaps} bottomOffset={20} {...props}>{children}</KeyboardAwareScrollView>;
+  return <KeyboardAwareScrollView keyboardShouldPersistTaps={keyboardShouldPersistTaps} keyboardDismissMode="interactive" bottomOffset={96} {...props}>{children}</KeyboardAwareScrollView>;
 }

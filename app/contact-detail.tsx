@@ -8,10 +8,11 @@ import {contactsRepository,phoneRepository,propertiesRepository,requirementsRepo
 import type {Contact,ContactPhone,Property,Requirement} from '@/types/domain';
 import {colors,radius,spacing} from '@/theme/tokens';
 import {getPropertyTypeLabel,getRoleLabel,useI18n} from '@/i18n/I18nContext';
-import {callUri,orderedPhoneChoices,whatsappUri} from '@/features/contacts/phoneActions';
+import {callUri,orderedPhoneChoices} from '@/features/contacts/phoneActions';
+import {WhatsAppChooser} from '@/components/WhatsAppChooser';
 
 export default function ContactDetail(){const {id}=useLocalSearchParams<{id:string}>();const {t,language,isRTL}=useI18n();const [contact,setContact]=useState<Contact|null>(null);const [requirements,setRequirements]=useState<Requirement[]>([]);const [offered,setOffered]=useState<Property[]>([]);
-  const [phones,setPhones]=useState<ContactPhone[]>([]);const load=useCallback(()=>{if(!id)return;void Promise.all([contactsRepository.get(id),phoneRepository.listForContact(id),requirementsRepository.forContact(id),propertiesRepository.forOfferedBy(id)]).then(([person,numbers,needs,properties])=>{setContact(person);setPhones(numbers);setRequirements(needs);setOffered(properties)})},[id]);
+  const [phones,setPhones]=useState<ContactPhone[]>([]);const [whatsAppPhone,setWhatsAppPhone]=useState<ContactPhone|null>(null);const load=useCallback(()=>{if(!id)return;void Promise.all([contactsRepository.get(id),phoneRepository.listForContact(id),requirementsRepository.forContact(id),propertiesRepository.forOfferedBy(id)]).then(([person,numbers,needs,properties])=>{setContact(person);setPhones(numbers);setRequirements(needs);setOffered(properties)})},[id]);
   useFocusEffect(useCallback(()=>{load()},[load]));if(!contact)return <SafeAreaView style={styles.page}><Text style={styles.loading}>{t('loading')}</Text></SafeAreaView>;
   const requirementSection=<Section title={t('requested')} hint={t('requestedHint')} action={t('addRequested')} isRTL={isRTL} onAction={()=>router.push({pathname:'/requirement-form',params:{contactId:contact.id}})}>
     {requirements.length?requirements.map(item=><RequirementCard key={item.id} item={item}/>):<Text style={styles.empty}>{t('noRequests')}</Text>}
@@ -25,11 +26,11 @@ export default function ContactDetail(){const {id}=useLocalSearchParams<{id:stri
     <View style={styles.person}><Text style={[styles.name,{textAlign:isRTL?'right':'left'}]}>{contact.name}</Text>{orderedPhoneChoices(phones).map(phone=><View key={phone.id} style={styles.phoneRow}>
       <View style={styles.phoneCopy}><Text style={[styles.phone,{textAlign:isRTL?'right':'left'}]}>{phone.display}</Text><Text style={[styles.phoneMeta,{textAlign:isRTL?'right':'left'}]}>{[phone.label,phone.isPrimary?t('primaryPhone'):null].filter(Boolean).join(' · ')}</Text></View>
       <View style={styles.phoneActions}><Pressable accessibilityLabel={`${t('call')} ${phone.display}`} onPress={()=>void Linking.openURL(callUri(phone))} style={styles.phoneAction}><Text style={styles.phoneActionText}>{t('call')}</Text></Pressable>
-        <Pressable accessibilityLabel={`${t('whatsapp')} ${phone.display}`} onPress={()=>void Linking.openURL(whatsappUri(phone))} style={styles.whatsappAction}><Text style={styles.whatsappText}>{t('whatsapp')}</Text></Pressable></View>
+        <Pressable accessibilityLabel={`${t('whatsapp')} ${phone.display}`} onPress={()=>setWhatsAppPhone(phone)} style={styles.whatsappAction}><Text style={styles.whatsappText}>{t('whatsapp')}</Text></Pressable></View>
     </View>)}<Text style={[styles.badge,{alignSelf:isRTL?'flex-end':'flex-start'}]}>{getRoleLabel(language,contact.role)}</Text>
       {contact.notes?<Text style={[styles.notes,{textAlign:isRTL?'right':'left'}]}>{contact.notes}</Text>:null}<PrimaryButton title={t('editPersonData')} onPress={()=>router.push({pathname:'/contact-form',params:{id:contact.id}})}/></View>
     {requestedFirst?requirementSection:offeredSection}{requestedFirst?offeredSection:requirementSection}
-  </ScrollView></SafeAreaView>;
+  </ScrollView><WhatsAppChooser visible={whatsAppPhone!==null} message="" phone={whatsAppPhone?.normalized} onClose={()=>setWhatsAppPhone(null)}/></SafeAreaView>;
 }
 
 function RequirementCard({item}:{item:Requirement}){const {t,language}=useI18n();const rent=item.minRent!==null&&item.maxRent!==null?`${item.minRent}–${item.maxRent}`:t('flexibleBudget');

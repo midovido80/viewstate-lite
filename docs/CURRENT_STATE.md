@@ -1,17 +1,18 @@
 # ViewState Lite — Current State
 
-Date: 2026-08-22
+Date: 2026-08-23
 
 ## Implemented
 
 - Isolated Expo 54 project with Android package `com.viewstate.lite`
 - Arabic-first light V001 shell and native tab navigation
-- LITE-03A3.1 / V0.5.1 with hardened controlled batch contact import
+- LITE-03 Stability & Simplicity Hotfix / V0.5.2 on top of the hardened A3.1 import engine
 - Local SQLite v5 schema with additive, versioned migrations
 - Multiple phone numbers per person with one Primary number
 - `contact_phones` as the authoritative source and `contacts.phone` as a transitional Primary mirror
 - Contacts, five approved roles and offline E.164 phone normalization
-- Batched device-contact import with default/per-row roles, full-row selection, visible-result controls, and verbatim device names/notes
+- Batched device-contact import with one classification for the whole batch, full-row selection, visible-result controls, and verbatim device names/notes
+- Per-contact role overrides are removed from the import UI to restore the approved simple A2 interaction
 - Phone-level import preflight keeps valid numbers executable while reporting invalid, duplicate, stored and intra-batch conflicts
 - Intra-batch shared numbers use an explicit single-owner radio choice with no first-row winner
 - Atomic executable-row import with full rollback on an unexpected technical write failure
@@ -30,7 +31,7 @@ Date: 2026-08-22
 - Text-record backup and transactional restore
 - Global search across people and properties
 - Contact and Global Search cover every stored normalized/display phone number
-- Call and WhatsApp actions are available for each explicit phone choice
+- Call actions are available for each explicit phone choice; WhatsApp actions explicitly choose standard WhatsApp or WhatsApp Business
 - Block Number included in property create/edit, drafts, details, Global Search and normal property sharing
 - Add-person choice between manual entry and device import
 - Contact import starts with no contacts selected
@@ -41,7 +42,9 @@ Date: 2026-08-22
 - Additive SQLite v2 through v5 migrations
 - Independent Database Schema V5 and Backup Format V2 contracts
 - Backup V2 saves and restores `contactPhones`; simple Backup V1/legacy restore compatibility remains
-- Keyboard-aware forms and explicit Android text/cursor colors
+- Keyboard-aware forms and modals with extra bottom clearance and explicit Android text/cursor colors
+- Property create/edit has explicit validation, a save lock/progress state, failure feedback, draft preservation, media-isolated failure reporting, and original creation-time preservation
+- Property, activity, block and Kuwait-area pickers open without transition delay and allow full wrapped Arabic/English labels
 
 ## Verified
 
