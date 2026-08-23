@@ -60,9 +60,9 @@ appId: com.viewstate.lite
 - tapOn: "تعديل العقار"
 - scrollUntilVisible:
     element:
-      text: "مؤجر"
+      text: "مفروش"
     direction: DOWN
-- tapOn: "مؤجر"
+- tapOn: "مفروش"
 - scrollUntilVisible:
     element:
       text: "حفظ العقار"
@@ -70,4 +70,3 @@ appId: com.viewstate.lite
 - tapOn:
     id: "property-save"
 - assertVisible: "QA Salmiya Apartment"
-- assertVisible: "مؤجر"

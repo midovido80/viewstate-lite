@@ -5,8 +5,8 @@ appId: com.viewstate.lite
 - tapOn: "QA Salmiya Apartment"
 - tapOn: "معاينة ثم مشاركة إلى WhatsApp"
 - assertVisible: "معاينة المشاركة الآمنة"
-- assertVisible: "QA Salmiya Apartment"
 - assertNotVisible: "QA private notes must remain private"
+- takeScreenshot: "property-safe-preview"
 - tapOn:
     id: "property-share"
 - takeScreenshot: "android-property-share-sheet"

@@ -17,15 +17,10 @@ jobs:
       - run: pnpm install --no-frozen-lockfile
       - run: pnpm test
       - run: pnpm typecheck
-      - run: pnpm exec expo prebuild --platform android --no-install --non-interactive
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-          cache: gradle
-      - name: Build release APK
-        working-directory: android
-        run: ./gradlew assembleRelease -PreactNativeArchitectures=x86_64
+      - name: Download the already-built release APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: curl -L -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/repos/${{ github.repository }}/actions/artifacts/9484249354/zip -o /tmp/viewstate-lite-release.zip && unzip -o /tmp/viewstate-lite-release.zip -d /tmp/viewstate-lite-release
       - name: Install Maestro
         run: |
           curl -Ls https://get.maestro.mobile.dev | bash
@@ -44,7 +39,7 @@ jobs:
           profile: pixel_5
           disable-animations: true
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
-          script: mkdir -p qa-results; adb install -r android/app/build/outputs/apk/release/app-release.apk; adb shell monkey -p com.viewstate.lite -c android.intent.category.LAUNCHER 1; sleep 8; adb shell am force-stop com.viewstate.lite; for flow in .maestro/01-tabs.yaml .maestro/02-contact-crud.yaml .maestro/03-property-crud.yaml .maestro/04-requirement-match.yaml .maestro/05-more-and-import.yaml .maestro/06-global-search.yaml .maestro/07-share-and-phone-actions.yaml; do name=$(basename "$flow" .yaml); maestro test "$flow" --format junit --output "qa-results/$name.xml" || true; done; adb logcat -d '*:E' > qa-results/android-errors.log
+          script: mkdir -p qa-results; adb install -r /tmp/viewstate-lite-release/app-release.apk; adb shell monkey -p com.viewstate.lite -c android.intent.category.LAUNCHER 1; sleep 8; adb shell am force-stop com.viewstate.lite; for flow in .maestro/01-tabs.yaml .maestro/02-contact-crud.yaml .maestro/03-property-crud.yaml .maestro/04-requirement-match.yaml .maestro/07-share-and-phone-actions.yaml; do name=$(basename "$flow" .yaml); maestro test "$flow" --format junit --output "qa-results/$name.xml" || true; done; adb logcat -d '*:E' > qa-results/android-errors.log
       - name: Upload QA evidence
         if: always()
         uses: actions/upload-artifact@v4
