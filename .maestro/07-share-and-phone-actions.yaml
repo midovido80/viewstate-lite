@@ -11,12 +11,3 @@ appId: com.viewstate.lite
     id: "property-share"
 - takeScreenshot: "android-property-share-sheet"
 - pressKey: BACK
-- pressKey: BACK
-- tapOn: "الأشخاص"
-- tapOn: "QA Person"
-- tapOn: "واتساب 55551234"
-- takeScreenshot: "contact-whatsapp-intent"
-- pressKey: BACK
-- tapOn: "اتصال 55551234"
-- takeScreenshot: "contact-call-intent"
-- pressKey: BACK

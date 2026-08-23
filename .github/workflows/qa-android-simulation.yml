@@ -41,7 +41,7 @@ jobs:
           profile: pixel_5
           disable-animations: true
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
-          script: mkdir -p qa-results; adb install -r /tmp/viewstate-lite-release/app-release.apk; adb shell monkey -p com.viewstate.lite -c android.intent.category.LAUNCHER 1; sleep 8; adb shell am force-stop com.viewstate.lite; for flow in .maestro/01-tabs.yaml .maestro/02-contact-crud.yaml .maestro/03-property-crud.yaml .maestro/04-requirement-match.yaml .maestro/07-share-and-phone-actions.yaml; do name=$(basename "$flow" .yaml); maestro test "$flow" --format junit --output "qa-results/$name.xml" || true; done; adb logcat -d '*:E' > qa-results/android-errors.log
+          script: mkdir -p qa-results; adb install -r /tmp/viewstate-lite-release/app-release.apk; adb shell monkey -p com.viewstate.lite -c android.intent.category.LAUNCHER 1; sleep 8; adb shell am force-stop com.viewstate.lite; for flow in .maestro/01-tabs.yaml .maestro/02-contact-crud.yaml .maestro/03-property-crud.yaml .maestro/04-requirement-match.yaml .maestro/07-share-and-phone-actions.yaml .maestro/08-contact-phone-actions.yaml; do name=$(basename "$flow" .yaml); maestro test "$flow" --format junit --output "qa-results/$name.xml" || true; done; adb logcat -d '*:E' > qa-results/android-errors.log
       - name: Upload QA evidence
         if: always()
         uses: actions/upload-artifact@v4

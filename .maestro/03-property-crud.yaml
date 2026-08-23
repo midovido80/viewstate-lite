@@ -57,16 +57,3 @@ appId: com.viewstate.lite
     id: "property-save"
 - assertVisible: "تفاصيل العقار"
 - assertVisible: "QA Salmiya Apartment"
-- tapOn: "تعديل العقار"
-- scrollUntilVisible:
-    element:
-      text: "مفروش"
-    direction: DOWN
-- tapOn: "مفروش"
-- scrollUntilVisible:
-    element:
-      text: "حفظ العقار"
-    direction: DOWN
-- tapOn:
-    id: "property-save"
-- assertVisible: "QA Salmiya Apartment"

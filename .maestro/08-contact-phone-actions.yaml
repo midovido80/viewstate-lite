@@ -1,0 +1,11 @@
+appId: com.viewstate.lite
+---
+- launchApp
+- tapOn: "الأشخاص"
+- tapOn: "QA Person"
+- tapOn: "واتساب"
+- takeScreenshot: "contact-whatsapp-intent"
+- pressKey: BACK
+- tapOn: "اتصال"
+- takeScreenshot: "contact-call-intent"
+- pressKey: BACK

@@ -7,7 +7,8 @@ appId: com.viewstate.lite
 - tapOn: "شقة"
 - tapOn: "اختر منطقة أو أكثر"
 - tapOn: "الشرق"
-- tapOn: "تم.*1"
+- tapOn:
+    point: "10%,4%"
 - tapOn:
     id: "requirement-min-rent"
 - inputText: "600"
