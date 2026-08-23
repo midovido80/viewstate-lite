@@ -46,6 +46,22 @@ function phonePreference(value:DevicePhoneInput):number{
 
 type PreparedContactRow={input:DeviceContactInput;prepared:ReturnType<typeof preparePhoneValues>};
 
+export class DevicePreparationCancelledError extends Error{constructor(){super('Device contact preparation cancelled');this.name='DevicePreparationCancelledError'}}
+
+/** Honor/Android providers may expose a phone-number service shadow as a separate
+ * contact whose display name is the number itself. Fold only unambiguous shadows
+ * into one real named contact; never merge two genuinely named contacts. */
+function collapseServiceShadows(rows:PreparedContactRow[]):PreparedContactRow[]{
+  const namedOwners=new Map<string,PreparedContactRow[]>();
+  for(const row of rows){if(isPhonePlaceholderName(row))continue;for(const phone of row.prepared.phones){const owners=namedOwners.get(phone.normalized)??[];owners.push(row);namedOwners.set(phone.normalized,owners)}}
+  return rows.filter(row=>{if(!isPhonePlaceholderName(row)||!row.prepared.phones.length)return true;const candidates=new Set<PreparedContactRow>();
+    for(const phone of row.prepared.phones)for(const owner of namedOwners.get(phone.normalized)??[])candidates.add(owner);
+    if(candidates.size!==1)return true;return false});
+}
+
+function isPhonePlaceholderName(row:PreparedContactRow):boolean{const name=row.input.name??'';if(!name.length)return true;const normalizedName=normalizePhone(name);
+  if(normalizedName&&row.prepared.phones.some(phone=>phone.normalized===normalizedName))return true;const digits=name.replace(/\D/g,'');return digits.length>0&&row.prepared.phones.some(phone=>phone.normalized.replace(/\D/g,'').endsWith(digits))}
+
 function finalizeCandidates(base:readonly PreparedContactRow[],owners:readonly StoredPhoneOwner[]):ImportCandidate[]{
   const ownerMap=new Map<string,StoredPhoneOwner[]>();for(const owner of owners){const current=ownerMap.get(owner.normalized)??[];current.push(owner);ownerMap.set(owner.normalized,current)}
   const deviceNumberOwners=new Map<string,string[]>();for(const row of base)for(const phone of row.prepared.phones){
@@ -56,12 +72,13 @@ function finalizeCandidates(base:readonly PreparedContactRow[],owners:readonly S
 }
 
 export function prepareDeviceContactRows(inputs:readonly DeviceContactInput[],owners:readonly StoredPhoneOwner[]):ImportCandidate[]{
-  return finalizeCandidates(inputs.filter(input=>input.phones.length>0).map(input=>({input,prepared:preparePhoneValues(input.phones)})),owners)}
+  return finalizeCandidates(collapseServiceShadows(inputs.filter(input=>input.phones.length>0).map(input=>({input,prepared:preparePhoneValues(input.phones)}))),owners)}
 
 export async function prepareDeviceContactRowsChunked(inputs:readonly DeviceContactInput[],owners:readonly StoredPhoneOwner[],chunkSize=100,
-  yieldToUi:()=>Promise<void>=()=>new Promise(resolve=>setTimeout(resolve,0))):Promise<ImportCandidate[]>{
-  const prepared:PreparedContactRow[]=[];for(let index=0;index<inputs.length;index+=chunkSize){for(const input of inputs.slice(index,index+chunkSize))if(input.phones.length)prepared.push({input,prepared:preparePhoneValues(input.phones)});if(index+chunkSize<inputs.length)await yieldToUi()}
-  return finalizeCandidates(prepared,owners);
+  yieldToUi:()=>Promise<void>=()=>new Promise(resolve=>setTimeout(resolve,0)),shouldCancel:()=>boolean=()=>false):Promise<ImportCandidate[]>{
+  const prepared:PreparedContactRow[]=[];for(let index=0;index<inputs.length;index+=chunkSize){if(shouldCancel())throw new DevicePreparationCancelledError();
+    for(const input of inputs.slice(index,index+chunkSize))if(input.phones.length)prepared.push({input,prepared:preparePhoneValues(input.phones)});if(index+chunkSize<inputs.length)await yieldToUi()}
+  if(shouldCancel())throw new DevicePreparationCancelledError();return finalizeCandidates(collapseServiceShadows(prepared),owners);
 }
 
 export function executablePhones(candidate:ImportCandidate,assignments:ReadonlyMap<string,string>):ImportCandidatePhone[]{return candidate.phones.filter(phone=>

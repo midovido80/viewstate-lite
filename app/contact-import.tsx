@@ -9,7 +9,7 @@ import {ChoicePicker} from '@/components/ChoicePicker';
 import {contactsRepository,phoneRepository,PhoneConflictError} from '@/lib/database';
 import {createId} from '@/lib/id';
 import {AppHeader} from '@/components/AppHeader';
-import {candidateIsExecutable,clearVisibleSelection,prepareDeviceContactRowsChunked,removeNonExecutableSelection,selectExecutable,type ImportCandidate} from '@/features/contacts/deviceImport';
+import {candidateIsExecutable,clearVisibleSelection,DevicePreparationCancelledError,prepareDeviceContactRowsChunked,removeNonExecutableSelection,selectExecutable,type ImportCandidate} from '@/features/contacts/deviceImport';
 import {buildImportPlan,filterImportCandidates,type ImportReport} from '@/features/contacts/importPlan';
 import type {ContactRole} from '@/types/domain';
 import {colors,radius,spacing} from '@/theme/tokens';
@@ -22,11 +22,12 @@ export default function ContactImport(){
   const [defaultRole,setDefaultRole]=useState<ContactRole>('tenant');const [assignments,setAssignments]=useState<Map<string,string>>(()=>new Map());
   const [query,setQuery]=useState('');const [loading,setLoading]=useState(true);const [importing,setImporting]=useState(false);const [report,setReport]=useState<ImportReport|null>(null);const [details,setDetails]=useState(false);
 
-  useEffect(()=>{void(async()=>{const permission=await ExpoContacts.requestPermissionsAsync();if(permission.status!=='granted'){setLoading(false);Alert.alert(t('permissionRequired'),t('permissionContacts'));return}
+  useEffect(()=>{let cancelled=false;void(async()=>{const permission=await ExpoContacts.requestPermissionsAsync();if(cancelled)return;if(permission.status!=='granted'){setLoading(false);Alert.alert(t('permissionRequired'),t('permissionContacts'));return}
     try{const [result,storedOwners]=await Promise.all([ExpoContacts.getContactsAsync({fields:[ExpoContacts.Fields.PhoneNumbers,ExpoContacts.Fields.Note],sort:ExpoContacts.SortTypes.FirstName}),phoneRepository.listAllWithOwners()]);
       const inputs=result.data.map((contact,index)=>({key:contact.id||`device:${index}`,name:contact.name,notes:contact.note,phones:contact.phoneNumbers??[]}));
-      setItems(await prepareDeviceContactRowsChunked(inputs,storedOwners));
-    }finally{setLoading(false)}})()},[t]);
+      const prepared=await prepareDeviceContactRowsChunked(inputs,storedOwners,100,()=>new Promise(resolve=>setTimeout(resolve,0)),()=>cancelled);if(!cancelled)setItems(prepared);
+    }catch(error){if(!cancelled&&!(error instanceof DevicePreparationCancelledError))Alert.alert(t('importDone'),t('importTechnicalFailure'))}
+    finally{if(!cancelled)setLoading(false)}})();return()=>{cancelled=true}},[t]);
 
   const filtered=useMemo(()=>filterImportCandidates(items,query),[items,query]);
   const availableCount=useMemo(()=>items.filter(item=>candidateIsExecutable(item,assignments)).length,[items,assignments]);
@@ -63,6 +64,7 @@ export default function ContactImport(){
         </View>)}
         {item.invalidDisplays.length?<Text style={[styles.issueText,{textAlign:isRTL?'right':'left'}]}>{t('invalidPhonesHere',{count:item.invalidDisplays.length})}</Text>:null}
         {item.duplicateDisplays.length?<Text style={[styles.issueText,{textAlign:isRTL?'right':'left'}]}>{t('duplicatePhonesHere',{count:item.duplicateDisplays.length})}</Text>:null}
+        {item.notes.length?<View style={styles.notesPreview}><Text style={[styles.notesLabel,{textAlign:isRTL?'right':'left'}]}>{t('deviceContactNotes')}</Text><Text style={[styles.notesText,{textAlign:isRTL?'right':'left'}]}>{item.notes}</Text></View>:null}
         {!executable?<Text style={[styles.unavailableText,{textAlign:isRTL?'right':'left'}]}>{t('noUsablePhones')}</Text>:null}
       </Pressable>}}/>
     <View style={styles.footer}><PrimaryButton title={importing?t('importingContacts'):`${t('importSelected')} (${selectedExecutableCount})`} onPress={run} disabled={!selectedExecutableCount||importing}/></View>
@@ -90,6 +92,7 @@ const styles=StyleSheet.create({page:{flex:1,backgroundColor:colors.background},
   selectedRow:{borderColor:colors.blue,borderWidth:2,backgroundColor:'#F2F8FF'},unavailableRow:{backgroundColor:colors.surface,opacity:.82},pressed:{opacity:.72},rowHeader:{alignItems:'flex-start',gap:spacing.sm},check:{fontSize:25,color:colors.blue,minWidth:28},checked:{fontWeight:'900'},name:{flex:1,fontSize:17,fontWeight:'800',color:colors.text,flexWrap:'wrap'},
   phoneBlock:{gap:4},phone:{color:colors.text,fontSize:15,flexWrap:'wrap'},conflictLink:{color:colors.blue,fontWeight:'700',flexWrap:'wrap'},
   batchBox:{borderWidth:1,borderColor:colors.border,borderRadius:radius.sm,padding:spacing.sm,gap:4},issueText:{color:colors.red,flexWrap:'wrap'},radioRow:{alignItems:'center',gap:spacing.sm,paddingVertical:5},radio:{fontSize:22,color:colors.blue},radioText:{color:colors.blue,fontWeight:'700',flex:1,flexWrap:'wrap'},unavailableText:{color:colors.red,fontWeight:'800'},
+  notesPreview:{backgroundColor:'#FFF8E8',borderRadius:radius.sm,padding:spacing.sm,gap:3},notesLabel:{color:colors.red,fontWeight:'800'},notesText:{color:colors.text,lineHeight:21},
   footer:{paddingTop:spacing.sm},empty:{textAlign:'center',color:colors.muted,marginTop:40},backdrop:{flex:1,backgroundColor:'rgba(8,25,45,.45)',justifyContent:'flex-end'},
   modalTitle:{fontSize:21,fontWeight:'900',color:colors.red,textAlign:'center',marginBottom:spacing.md},
   reportSheet:{backgroundColor:'white',borderTopLeftRadius:radius.lg,borderTopRightRadius:radius.lg,maxHeight:'85%'},reportContent:{padding:spacing.lg,gap:spacing.md},summary:{fontSize:18,fontWeight:'800',color:colors.text},detailsButton:{alignItems:'center',padding:10},detailsButtonText:{color:colors.blue,fontWeight:'800'},details:{gap:spacing.sm},secondary:{color:colors.muted}});

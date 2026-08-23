@@ -9,11 +9,11 @@ export function NumberPicker({label,value,onChange}:{label:string;value:number|n
   return <View style={styles.wrap}>
     <Text style={[styles.label,{textAlign:isRTL?'right':'left'}]}>{label}</Text>
     <View style={[styles.values,{flexDirection:isRTL?'row-reverse':'row'}]}>{VALUES.map(item=><Pressable key={item} hitSlop={3} android_ripple={{color:'#D9E9FF'}}
-      onPress={()=>{Keyboard.dismiss();onChange(item)}} style={({pressed})=>[styles.chip,value===item&&styles.active,pressed&&styles.pressed]}><Text style={[styles.text,value===item&&styles.activeText]}>{item}</Text></Pressable>)}</View>
+      onPress={()=>{onChange(item);requestAnimationFrame(()=>Keyboard.dismiss())}} style={({pressed})=>[styles.chip,value===item&&styles.active,pressed&&styles.pressed]}><Text style={[styles.text,value===item&&styles.activeText]}>{item}</Text></Pressable>)}</View>
   </View>;
 }
 
 const styles=StyleSheet.create({wrap:{gap:spacing.xs},label:{fontSize:15,fontWeight:'600',color:colors.text,textAlign:'right'},
   values:{flexDirection:'row-reverse',flexWrap:'wrap',gap:spacing.xs},chip:{width:45,minHeight:42,borderWidth:1,borderColor:colors.border,
-    borderRadius:radius.md,alignItems:'center',justifyContent:'center',backgroundColor:'white'},pressed:{opacity:.65},active:{backgroundColor:colors.blue,borderColor:colors.blue},
-  text:{fontSize:16,color:colors.text,fontWeight:'600'},activeText:{color:'white'}});
+    borderRadius:radius.md,alignItems:'center',justifyContent:'center',backgroundColor:'white'},pressed:{opacity:.65},active:{backgroundColor:'#DCEEFF',borderColor:colors.blue,borderWidth:2},
+  text:{fontSize:16,color:colors.text,fontWeight:'600'},activeText:{color:'#064A91',fontWeight:'900'}});

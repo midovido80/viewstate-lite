@@ -3,11 +3,11 @@ import {readFileSync} from 'node:fs';
 import test from 'node:test';
 import {BACKUP_FORMAT_VERSION,DATABASE_SCHEMA_VERSION} from '../src/lib/databaseContracts.ts';
 
-test('V0.5.3 keeps database and backup contracts frozen',()=>{
+test('V0.5.4 keeps database and backup contracts frozen',()=>{
   const pkg=JSON.parse(readFileSync('package.json','utf8'));const app=JSON.parse(readFileSync('app.json','utf8'));
-  assert.equal(pkg.version,'0.5.3');assert.equal(app.expo.version,'0.5.3');assert.equal(app.expo.android.versionCode,11);
+  assert.equal(pkg.version,'0.5.4');assert.equal(app.expo.version,'0.5.4');assert.equal(app.expo.android.versionCode,12);
   assert.equal(DATABASE_SCHEMA_VERSION,5);assert.equal(BACKUP_FORMAT_VERSION,2);
-  assert.match(readFileSync('app/(tabs)/more.tsx','utf8'),/Interaction Hotfix · V0\.5\.3/);
+  assert.match(readFileSync('app/(tabs)/more.tsx','utf8'),/Device Field Reliability · V0\.5\.4/);
 });
 
 test('property save is guarded, keyboard-safe, draft-safe, and preserves edit creation time',()=>{
@@ -17,6 +17,29 @@ test('property save is guarded, keyboard-safe, draft-safe, and preserves edit cr
   assert.match(source,/await draftsRepository\.clear\(key\)/);assert.match(source,/disabled=\{saving\}/);
   assert.match(source,/useDraftAutosave/);assert.match(source,/await draftAutosave\.cancel\(\)/);
   assert.match(source,/requestAnimationFrame/);assert.match(source,/keyboardShouldPersistTaps="always"/);
+  assert.doesNotMatch(source,/setTimeout\(scroll/);assert.doesNotMatch(source,/const reveal=/);
+});
+
+test('successful save permanently stops draft writes before clearing the new-property draft',()=>{
+  const hook=readFileSync('src/hooks/useDraftAutosave.ts','utf8');const form=readFileSync('app/property-form.tsx','utf8');
+  assert.match(hook,/stopped\.current=true/);assert.match(hook,/if\(!stopped\.current\)void flush\(\)/);
+  assert.match(form,/await draftAutosave\.cancel\(\);await draftsRepository\.clear\(key\)/);
+});
+
+test('number selection remains visible and does not dismiss the keyboard before changing state',()=>{
+  const source=readFileSync('src/components/NumberPicker.tsx','utf8');
+  assert.match(source,/backgroundColor:'#DCEEFF'/);assert.match(source,/activeText:\{color:'#064A91'/);
+  assert.match(source,/onChange\(item\);requestAnimationFrame\(\(\)=>Keyboard\.dismiss\(\)\)/);
+});
+
+test('phone import has one intentional entry point and cancels background preparation on exit',()=>{
+  assert.doesNotMatch(readFileSync('app/(tabs)/index.tsx','utf8'),/contact-import/);assert.doesNotMatch(readFileSync('app/(tabs)/contacts.tsx','utf8'),/contact-import/);
+  assert.match(readFileSync('app/contact-add.tsx','utf8'),/contact-import/);assert.match(readFileSync('app/contact-import.tsx','utf8'),/return\(\)=>\{cancelled=true\}/);
+});
+
+test('saved videos are visible and delegated to the Android system player',()=>{
+  const source=readFileSync('app/property-detail.tsx','utf8');assert.match(source,/x=>x\.kind==='video'/);
+  assert.match(source,/android\.intent\.action\.VIEW/);assert.match(source,/type:'video\/\*'/);assert.match(source,/getContentUriAsync/);
 });
 
 test('WhatsApp and WhatsApp Business are explicit Android targets',()=>{

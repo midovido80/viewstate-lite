@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
-import {Alert,Keyboard,Linking,Modal,Pressable,StyleSheet,Text,TextInput,View,type LayoutChangeEvent} from 'react-native';
+import {ActivityIndicator,Alert,Keyboard,Linking,Modal,Pressable,StyleSheet,Text,View} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import {router,useLocalSearchParams} from 'expo-router';
@@ -37,11 +37,9 @@ export default function PropertyForm(){const {id,offeredByContactId}=useLocalSea
   const key=id?`property:${id}`:'property:new';const [form,setForm]=useState<Draft>(empty);
   const [sourceContactId,setSourceContactId]=useState<string|null>(offeredByContactId??null);
   const [ownerContactId,setOwnerContactId]=useState<string|null>(null);
-  const [pendingMedia,setPendingMedia]=useState<Array<{uri:string;kind:'image'|'video'}>>([]);const [ready,setReady]=useState(false);const [saving,setSaving]=useState(false);
+  const [pendingMedia,setPendingMedia]=useState<Array<{uri:string;kind:'image'|'video';extension:string}>>([]);const [ready,setReady]=useState(false);const [saving,setSaving]=useState(false);
   const [originalCreatedAt,setOriginalCreatedAt]=useState<string|null>(null);
   const saveLock=useRef(false);
-  const formScroll=useRef<any>(null);const stepY=useRef<Record<string,number>>({});
-  const rentRef=useRef<TextInput>(null);const sizeRef=useRef<TextInput>(null);const descriptionRef=useRef<TextInput>(null);
   const [locationOpen,setLocationOpen]=useState(false);const [locationDraft,setLocationDraft]=useState('');
   const commercial=usesCommercialDetails(form.type);
 
@@ -53,12 +51,10 @@ export default function PropertyForm(){const {id,offeredByContactId}=useLocalSea
         paciNumberCount:toOptionalNumber(draft.paciNumberCount)})}setReady(true)})()},[id,key]);
   const draftAutosave=useDraftAutosave({enabled:ready,key,value:form,save:draftsRepository.save});
 
-  const capture=(step:string)=>(event:LayoutChangeEvent)=>{stepY.current[step]=event.nativeEvent.layout.y};
-  const reveal=(step:string)=>{Keyboard.dismiss();const scroll=()=>formScroll.current?.scrollTo?.({y:Math.max(0,(stepY.current[step]??0)-12),animated:true});scroll();setTimeout(scroll,180)};
-
   const pick=async()=>{const result=await ImagePicker.launchImageLibraryAsync({mediaTypes:['images','videos'],allowsMultipleSelection:true,quality:.85});
-    if(!result.canceled)setPendingMedia(old=>[...old,...result.assets.map(asset=>({uri:asset.uri,kind:asset.type==='video'?'video' as const:'image' as const}))])};
-  const openLocation=()=>{setLocationDraft(form.mapUrl);setLocationOpen(true)};
+    if(!result.canceled)setPendingMedia(old=>[...old,...result.assets.map(asset=>{const kind=asset.type==='video'?'video' as const:'image' as const;
+      return {uri:asset.uri,kind,extension:mediaExtension(asset.fileName,asset.mimeType,kind)}})])};
+  const openLocation=()=>{setLocationDraft(form.mapUrl);setLocationOpen(true);requestAnimationFrame(()=>Keyboard.dismiss())};
   const launchGoogleMaps=async()=>{const query=encodeURIComponent(`${form.area||'Kuwait'}, Kuwait`);
     try{await Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${query}`)}catch{Alert.alert(t('mapOpenFailed'),t('mapOpenFailedMessage'))}};
   const useCurrentLocation=async()=>{const permission=await Location.requestForegroundPermissionsAsync();
@@ -67,7 +63,7 @@ export default function PropertyForm(){const {id,offeredByContactId}=useLocalSea
     setLocationDraft(googleMapsUrl(position.coords.latitude,position.coords.longitude));
   };
   const saveLocation=()=>{const url=locationDraft.trim();if(!url){Alert.alert(t('chooseLocation'),t('chooseLocationMessage'));return}
-    const coordinates=parseCoordinatesFromMapUrl(url);setForm({...form,mapUrl:url,latitude:coordinates?.latitude??null,longitude:coordinates?.longitude??null});setLocationOpen(false)};
+    const coordinates=parseCoordinatesFromMapUrl(url);setForm(current=>({...current,mapUrl:url,latitude:coordinates?.latitude??null,longitude:coordinates?.longitude??null}));setLocationOpen(false)};
   const save=async()=>{if(saveLock.current)return;Keyboard.dismiss();const rent=Number(form.monthlyRent);const size=form.sizeSqm.trim()?Number(form.sizeSqm):null;if(!form.area.trim()||!Number.isFinite(rent)||rent<=0){Alert.alert(t('incompleteData'),t('propertyRequired'));return}
     if(size!==null&&(!Number.isFinite(size)||size<=0)){Alert.alert(t('incompleteData'),t('propertySizeInvalid'));return}
     saveLock.current=true;setSaving(true);await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));const now=new Date().toISOString();try{await propertiesRepository.upsert({id:propertyId,
@@ -76,7 +72,7 @@ export default function PropertyForm(){const {id,offeredByContactId}=useLocalSea
       description:form.description.trim(),privateNotes:form.privateNotes.trim(),paci:form.paci.trim(),mapUrl:form.mapUrl.trim(),latitude:form.latitude,
       longitude:form.longitude,paciNumberCount:commercial?form.paciNumberCount:null,activityType:commercial?form.activityType:null,
       ownerContactId,offeredByContactId:sourceContactId,status:form.status,createdAt:originalCreatedAt??now,updatedAt:now});
-    let order=0;let failedMedia=0;for(const media of pendingMedia){try{const ext=media.uri.split('.').pop()??(media.kind==='video'?'mp4':'jpg');const uri=await persistMedia(media.uri,ext);
+    let order=0;let failedMedia=0;for(const media of pendingMedia){try{const uri=await persistMedia(media.uri,media.extension);
       await propertiesRepository.addMedia({id:createId('media'),propertyId,uri,kind:media.kind,sortOrder:order++,createdAt:now})}catch{failedMedia++}}
     await draftAutosave.cancel();await draftsRepository.clear(key);const finish=()=>router.replace({pathname:'/property-detail',params:{id:propertyId}});
     Alert.alert(t('propertySavedTitle'),failedMedia?t('propertySavedMediaWarning',{count:failedMedia}):t('propertySavedMessage'),[{text:t('finish'),onPress:finish}],{cancelable:false});
@@ -84,32 +80,32 @@ export default function PropertyForm(){const {id,offeredByContactId}=useLocalSea
 
   const activityOptions=activityValues.map(value=>({value,label:getActivityLabel(language,value)}));
   const blockOptions=[{value:'none',label:t('notSpecified')},...blockValues.map(value=>({value,label:value}))];
+  if(!ready)return <SafeAreaView style={styles.page} edges={['top']}><AppHeader title={id?t('editProperty'):t('addRentalProperty')}/><View style={styles.loading}><ActivityIndicator color={colors.blue}/><Text>{t('loading')}</Text></View></SafeAreaView>;
   return <SafeAreaView style={styles.page} edges={['top']}><AppHeader title={id?t('editProperty'):t('addRentalProperty')}/>
-    <KeyboardAwareScrollViewCompat ref={formScroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="always">
+    <KeyboardAwareScrollViewCompat contentContainerStyle={styles.content} keyboardShouldPersistTaps="always">
       <Text style={[styles.label,{textAlign:isRTL?'right':'left'}]}>{t('type')}</Text><View style={[styles.chips,{flexDirection:isRTL?'row-reverse':'row'}]}>{types.map(value=><Pressable key={value}
-        onPress={()=>setForm({...form,type:value})} style={[styles.typeChip,form.type===value&&styles.active]}><Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.78} style={[styles.chipText,form.type===value&&styles.activeText]}>{getPropertyTypeLabel(language,value)}</Text></Pressable>)}</View>
-      <View onLayout={capture('title')}><FormField label={t('shortPropertyName')} placeholder={t('shortPropertyExample')} value={form.title} onChangeText={title=>setForm({...form,title})} returnKeyType="next" onSubmitEditing={()=>reveal('area')}/></View>
+        onPress={()=>setForm(current=>({...current,type:value}))} style={[styles.typeChip,form.type===value&&styles.active]}><Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.78} style={[styles.chipText,form.type===value&&styles.activeText]}>{getPropertyTypeLabel(language,value)}</Text></Pressable>)}</View>
+      <FormField label={t('shortPropertyName')} placeholder={t('shortPropertyExample')} value={form.title} onChangeText={title=>setForm(current=>({...current,title}))} returnKeyType="done"/>
       <Text style={[styles.helper,{textAlign:isRTL?'right':'left'}]}>{t('shortPropertyHelp')}</Text>
-      <View onLayout={capture('area')}><AreaPicker value={form.area} onChange={area=>{setForm({...form,area});reveal('block')}}/></View>
-      <View onLayout={capture('block')}><ChoicePicker label={t('blockNumber')} value={form.blockNumber===null?'none':String(form.blockNumber)} placeholder={t('notSpecified')} options={blockOptions}
-        onChange={value=>{setForm({...form,blockNumber:value==='none'?null:Number(value)});setTimeout(()=>rentRef.current?.focus(),180)}}/></View>
-      <View onLayout={capture('rent')}><FormField ref={rentRef} label={`${t('rent')} *`} placeholder={t('currencyPlaceholder')} value={form.monthlyRent} keyboardType="numeric" returnKeyType="done" onSubmitEditing={()=>reveal(commercial?'bathrooms':'bedrooms')} onChangeText={monthlyRent=>setForm({...form,monthlyRent})}/></View>
-      {!commercial&&<View onLayout={capture('bedrooms')}><NumberPicker label={t('bedrooms')} value={form.bedrooms} onChange={bedrooms=>{setForm({...form,bedrooms});reveal('bathrooms')}}/></View>}
-      <View onLayout={capture('bathrooms')}><NumberPicker label={t('bathrooms')} value={form.bathrooms} onChange={bathrooms=>{setForm({...form,bathrooms});reveal(commercial?'commercial':'size')}}/></View>
+      <AreaPicker value={form.area} onChange={area=>setForm(current=>({...current,area}))}/>
+      <ChoicePicker label={t('blockNumber')} value={form.blockNumber===null?'none':String(form.blockNumber)} placeholder={t('notSpecified')} options={blockOptions}
+        onChange={value=>setForm(current=>({...current,blockNumber:value==='none'?null:Number(value)}))}/>
+      <FormField label={`${t('rent')} *`} placeholder={t('currencyPlaceholder')} value={form.monthlyRent} keyboardType="numeric" returnKeyType="done" onChangeText={monthlyRent=>setForm(current=>({...current,monthlyRent}))}/>
+      {!commercial&&<NumberPicker label={t('bedrooms')} value={form.bedrooms} onChange={bedrooms=>setForm(current=>({...current,bedrooms}))}/>}
+      <NumberPicker label={t('bathrooms')} value={form.bathrooms} onChange={bathrooms=>setForm(current=>({...current,bathrooms}))}/>
       {commercial&&<>
-        <View onLayout={capture('commercial')}><NumberPicker label={t('paciNumberCount')} value={form.paciNumberCount} onChange={paciNumberCount=>setForm({...form,paciNumberCount})}/>
+        <NumberPicker label={t('paciNumberCount')} value={form.paciNumberCount} onChange={paciNumberCount=>setForm(current=>({...current,paciNumberCount}))}/>
         <ChoicePicker label={t('activityType')} value={form.activityType} placeholder={t('chooseActivity')} options={activityOptions}
-          onChange={activityType=>{setForm({...form,activityType});setTimeout(()=>sizeRef.current?.focus(),180)}}/></View>
+          onChange={activityType=>setForm(current=>({...current,activityType}))}/>
       </>}
-      <View onLayout={capture('size')}><FormField ref={sizeRef} label={t('sizeSqm')} value={form.sizeSqm} keyboardType="numeric" returnKeyType="next" onSubmitEditing={()=>descriptionRef.current?.focus()} onChangeText={sizeSqm=>setForm({...form,sizeSqm})}/></View>
-      <View onLayout={capture('description')}><FormField ref={descriptionRef} label={t('description')} value={form.description} multiline onFocus={()=>setTimeout(()=>formScroll.current?.scrollTo?.({y:Math.max(0,(stepY.current.description??0)-12),animated:true}),120)} onChangeText={description=>setForm({...form,description})}/></View>
+      <FormField label={t('sizeSqm')} value={form.sizeSqm} keyboardType="numeric" returnKeyType="done" onChangeText={sizeSqm=>setForm(current=>({...current,sizeSqm}))}/>
+      <FormField label={t('description')} value={form.description} multiline onChangeText={description=>setForm(current=>({...current,description}))}/>
       <Text style={[styles.label,{textAlign:isRTL?'right':'left'}]}>{t('furnishing')}</Text><View style={[styles.chips,{flexDirection:isRTL?'row-reverse':'row'}]}>{(['furnished','semi_furnished','unfurnished'] as const).map(value=><Pressable key={value}
-        onPress={()=>{setForm({...form,furnishing:value});reveal('status')}} style={[styles.chip,form.furnishing===value&&styles.active]}><Text style={[styles.chipText,form.furnishing===value&&styles.activeText]}>{getFurnishingLabel(language,value)}</Text></Pressable>)}</View>
-      <View onLayout={capture('status')}><Text style={[styles.label,{textAlign:isRTL?'right':'left'}]}>{t('propertyStatus')}</Text><View style={[styles.chips,{flexDirection:isRTL?'row-reverse':'row'}]}>{(['available','rented','paused'] as const).map(value=><Pressable key={value}
-        onPress={()=>setForm({...form,status:value})} style={[styles.chip,form.status===value&&styles.active]}><Text style={[styles.chipText,form.status===value&&styles.activeText]}>{t(value)}</Text></Pressable>)}</View>
-      </View>
-      <FormField label={t('privateNotes')} value={form.privateNotes} multiline onChangeText={privateNotes=>setForm({...form,privateNotes})}/>
-      <FormField label={t('paci')} value={form.paci} keyboardType="numeric" onChangeText={paci=>setForm({...form,paci})}/>
+        onPress={()=>setForm(current=>({...current,furnishing:value}))} style={[styles.chip,form.furnishing===value&&styles.active]}><Text style={[styles.chipText,form.furnishing===value&&styles.activeText]}>{getFurnishingLabel(language,value)}</Text></Pressable>)}</View>
+      <Text style={[styles.label,{textAlign:isRTL?'right':'left'}]}>{t('propertyStatus')}</Text><View style={[styles.chips,{flexDirection:isRTL?'row-reverse':'row'}]}>{(['available','rented','paused'] as const).map(value=><Pressable key={value}
+        onPress={()=>setForm(current=>({...current,status:value}))} style={[styles.chip,form.status===value&&styles.active]}><Text style={[styles.chipText,form.status===value&&styles.activeText]}>{t(value)}</Text></Pressable>)}</View>
+      <FormField label={t('privateNotes')} value={form.privateNotes} multiline onChangeText={privateNotes=>setForm(current=>({...current,privateNotes}))}/>
+      <FormField label={t('paci')} value={form.paci} keyboardType="numeric" onChangeText={paci=>setForm(current=>({...current,paci}))}/>
       <PrimaryButton title={form.mapUrl?t('locationSelected'):t('chooseGoogleLocation')} onPress={openLocation}/>
       <PrimaryButton title={t('addMedia',{count:pendingMedia.length})} onPress={pick}/><PrimaryButton title={saving?t('savingProperty'):t('saveProperty')} onPress={save} disabled={saving}/>
     </KeyboardAwareScrollViewCompat>
@@ -128,8 +124,10 @@ export default function PropertyForm(){const {id,offeredByContactId}=useLocalSea
 
 function toOptionalNumber(value:unknown):number|null{if(value===null||value===undefined||value==='')return null;const number=Number(value);return Number.isFinite(number)?number:null}
 function toBlockNumber(value:unknown):number|null{const number=toOptionalNumber(value);return number!==null&&Number.isInteger(number)&&number>=1&&number<=12?number:null}
+function mediaExtension(fileName:string|null|undefined,mimeType:string|null|undefined,kind:'image'|'video'):string{const fromName=fileName?.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g,'');
+  if(fromName&&fromName.length<=5)return fromName;const fromMime=mimeType?.split('/').pop()?.toLowerCase().replace(/[^a-z0-9]/g,'');return fromMime||(kind==='video'?'mp4':'jpg')}
 
-const styles=StyleSheet.create({page:{flex:1,backgroundColor:colors.background},content:{padding:spacing.md,gap:spacing.md,paddingBottom:spacing.xl*5},
+const styles=StyleSheet.create({page:{flex:1,backgroundColor:colors.background},loading:{flex:1,alignItems:'center',justifyContent:'center',gap:spacing.sm},content:{padding:spacing.md,gap:spacing.md,paddingBottom:spacing.xl*5},
   label:{fontWeight:'600',textAlign:'right',color:colors.text},helper:{fontSize:13,color:colors.muted,textAlign:'right',marginTop:-spacing.sm},
   chips:{flexDirection:'row-reverse',flexWrap:'wrap',gap:spacing.sm},chip:{minHeight:48,borderWidth:1,borderColor:colors.border,borderRadius:radius.lg,paddingHorizontal:spacing.md,paddingVertical:10,alignItems:'center',justifyContent:'center',backgroundColor:'white'},typeChip:{width:'30.5%',minHeight:58,borderWidth:1,borderColor:colors.border,borderRadius:radius.lg,paddingHorizontal:8,paddingVertical:10,alignItems:'center',justifyContent:'center',backgroundColor:'white'},chipText:{color:colors.text,fontWeight:'700',textAlign:'center'},
   active:{backgroundColor:colors.blue,borderColor:colors.blue},activeText:{color:'white',fontWeight:'700'},locationPage:{flex:1,backgroundColor:colors.background},

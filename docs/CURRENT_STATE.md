@@ -6,14 +6,14 @@ Date: 2026-08-23
 
 - Isolated Expo 54 project with Android package `com.viewstate.lite`
 - Arabic-first light V001 shell and native tab navigation
-- LITE-03 Interaction Reliability Hotfix / V0.5.3 on top of the hardened A3.1 import engine
+- LITE-03 Device Field Reliability Hotfix / V0.5.4 on top of the hardened A3.1 import engine
 - Local SQLite v5 schema with additive, versioned migrations
 - Multiple phone numbers per person with one Primary number
 - `contact_phones` as the authoritative source and `contacts.phone` as a transitional Primary mirror
 - Contacts, five approved roles and offline E.164 phone normalization
 - Batched device-contact import with one classification for the whole batch, full-row selection, visible-result controls, and verbatim device names/notes
 - Per-contact role overrides are removed from the import UI to restore the approved simple A2 interaction
-- Phone-level import preflight keeps valid numbers executable while reporting invalid, stored and intra-batch conflicts; same-number Android service aliases inside one contact are silently collapsed
+- Phone-level import preflight keeps valid numbers executable while reporting invalid, stored and intra-batch conflicts; same-number Android service aliases and unambiguous phone-number shadow rows are silently collapsed
 - Intra-batch shared numbers use an explicit single-owner radio choice with no first-row winner
 - Atomic executable-row import with full rollback on an unexpected technical write failure
 - Central Domain Import Plan for executable rows, roles, Primary assignment and report totals
@@ -43,10 +43,13 @@ Date: 2026-08-23
 - Independent Database Schema V5 and Backup Format V2 contracts
 - Backup V2 saves and restores `contactPhones`; simple Backup V1/legacy restore compatibility remains
 - Keyboard-aware forms and modals keep focused fields visible, deliver the first tap while the keyboard is open, and retain extra bottom clearance
-- Property create/edit has deterministic next-section scrolling, immediate save progress, a save lock, failure feedback, serialized draft preservation, media-isolated failure reporting, and original creation-time preservation
+- Property create/edit removes forced scroll races, opens location immediately, shows immediate save progress, has a save lock, preserves drafts on failure, permanently stops draft writes before successful clear, isolates media failure, and preserves original creation time
 - Device-contact local search has a pale-blue background, strong red border, search icon and explicit Arabic/English local-search label
 - WhatsApp and WhatsApp Business use separate explicit Android package intents
 - Property, activity, block and Kuwait-area pickers open without transition delay and allow full wrapped Arabic/English labels
+- Selected room/bathroom values keep a high-contrast visible state; saved videos are exposed through the Android system video player without an embedded-player dependency
+- Device contact preparation is cancellable when its screen closes, preventing stale background work from overlapping later app interactions
+- Device import has one intentional entry point under Add person; redundant Home and People-tab shortcuts are removed
 
 ## Verified
 
