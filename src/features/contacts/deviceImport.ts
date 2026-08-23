@@ -5,7 +5,7 @@ import type {ContactRole} from '../../types/domain.ts';
 export function preserveDeviceContactName(name:string|undefined|null,phone:string):string{return name&&name.length>0?name:phone}
 export function preserveDeviceContactNotes(notes:string|undefined|null):string{return notes??''}
 
-export interface DevicePhoneInput{number?:string|null;label?:string|null}
+export interface DevicePhoneInput{number?:string|null;label?:string|null;isPrimary?:boolean|null}
 export interface DeviceContactInput{key:string;name?:string|null;notes?:string|null;phones:readonly DevicePhoneInput[]}
 export interface PreparedDevicePhone{normalized:string;display:string;label:string}
 export interface StoredPhoneOwner{normalized:string;contactId:string;contactName:string}
@@ -28,11 +28,20 @@ export function prepareDevicePhones(values:readonly DevicePhoneInput[]):{phones:
 }
 
 function preparePhoneValues(values:readonly DevicePhoneInput[]):Pick<ImportCandidate,'invalidDisplays'|'duplicateDisplays'>&{phones:PreparedDevicePhone[]}{
-  const phones:PreparedDevicePhone[]=[];const seen=new Set<string>();const invalidDisplays:string[]=[];const duplicateDisplays:string[]=[];
+  const phones:PreparedDevicePhone[]=[];const phoneIndexes=new Map<string,number>();const phoneRanks=new Map<string,number>();const invalidDisplays:string[]=[];const duplicateDisplays:string[]=[];
   for(const value of values){const display=value.number??'';const normalized=normalizePhone(display);
-    if(!normalized){invalidDisplays.push(display);continue}if(seen.has(normalized)){duplicateDisplays.push(display);continue}
-    seen.add(normalized);phones.push({normalized,display,label:value.label??''});}
+    if(!normalized){invalidDisplays.push(display);continue}
+    const rank=phonePreference(value);const existingIndex=phoneIndexes.get(normalized);
+    // Android may expose one real number several times for Message, Voice call,
+    // Video call or voicemail services. These are aliases, not user duplicates.
+    if(existingIndex!==undefined){if(rank>(phoneRanks.get(normalized)??0)){phones[existingIndex]={normalized,display,label:value.label??''};phoneRanks.set(normalized,rank)}continue}
+    phoneIndexes.set(normalized,phones.length);phoneRanks.set(normalized,rank);phones.push({normalized,display,label:value.label??''});}
   return {phones,invalidDisplays,duplicateDisplays};
+}
+
+function phonePreference(value:DevicePhoneInput):number{
+  if(value.isPrimary)return 3;
+  return /mobile|cell|personal|جوال|موبايل|هاتف/i.test(value.label??'')?2:1;
 }
 
 type PreparedContactRow={input:DeviceContactInput;prepared:ReturnType<typeof preparePhoneValues>};

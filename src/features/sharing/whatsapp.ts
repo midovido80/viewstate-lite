@@ -1,3 +1,4 @@
+import * as IntentLauncher from 'expo-intent-launcher';
 import {Linking,Platform} from 'react-native';
 
 export type WhatsAppTarget='whatsapp'|'whatsapp_business';
@@ -13,12 +14,11 @@ export class WhatsAppUnavailableError extends Error{
 
 export async function sendToWhatsApp(target:WhatsAppTarget,message:string,phone?:string):Promise<void>{
   const digits=phone?.replace(/\D/g,'')??'';
-  const query=[digits?`phone=${digits}`:'',`text=${encodeURIComponent(message)}`].filter(Boolean).join('&');
-  const url=`whatsapp://send?${query}`;
+  const url=digits?`https://wa.me/${digits}${message?`?text=${encodeURIComponent(message)}`:''}`:`whatsapp://send?text=${encodeURIComponent(message)}`;
   try{
     if(Platform.OS==='android'){
-      const intentUrl=`intent://send?${query}#Intent;scheme=whatsapp;package=${PACKAGES[target]};end`;
-      await Linking.openURL(intentUrl);
+      if(digits)await IntentLauncher.startActivityAsync('android.intent.action.VIEW',{data:url,packageName:PACKAGES[target]});
+      else await IntentLauncher.startActivityAsync('android.intent.action.SEND',{type:'text/plain',packageName:PACKAGES[target],extra:{'android.intent.extra.TEXT':message}});
       return;
     }
     await Linking.openURL(url);

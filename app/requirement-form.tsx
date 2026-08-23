@@ -13,6 +13,7 @@ import {createId} from '@/lib/id';
 import type {Furnishing,PropertyType,Requirement} from '@/types/domain';
 import {colors,radius,spacing} from '@/theme/tokens';
 import {getFurnishingLabel,getPropertyTypeLabel,useI18n} from '@/i18n/I18nContext';
+import {useDraftAutosave} from '@/hooks/useDraftAutosave';
 
 const types:PropertyType[]=['apartment','villa','floor','building','office','shop','warehouse','chalet'];
 
@@ -24,15 +25,16 @@ export default function RequirementForm(){
   const [bedrooms,setBedrooms]=useState<number|null>(null);const [bathrooms,setBathrooms]=useState<number|null>(null);const [furnishing,setFurnishing]=useState<Furnishing>('any');const [notes,setNotes]=useState('');
   const [createdAt,setCreatedAt]=useState<string|null>(null);const [savedContactId,setSavedContactId]=useState(contactId??'');const [ready,setReady]=useState(false);
   useEffect(()=>{void (async()=>{if(id){const item=await requirementsRepository.get(id);if(item){setSavedContactId(item.contactId);setAreas(item.areas);setSelected(item.propertyTypes);setMinRent(item.minRent?.toString()??'');setMaxRent(item.maxRent?.toString()??'');setBedrooms(item.minBedrooms);setBathrooms(item.minBathrooms);setFurnishing(item.furnishing);setNotes(item.notes);setCreatedAt(item.createdAt)}}else{const draft=await draftsRepository.load<{areas:string[];selected:PropertyType[];minRent:string;maxRent:string;bedrooms:number|null;bathrooms:number|null;furnishing:Furnishing;notes:string}>(draftKey);if(draft){setAreas(draft.areas);setSelected(draft.selected);setMinRent(draft.minRent);setMaxRent(draft.maxRent);setBedrooms(draft.bedrooms);setBathrooms(draft.bathrooms);setFurnishing(draft.furnishing);setNotes(draft.notes)}}setReady(true)})()},[draftKey,id]);
-  useEffect(()=>{if(ready)void draftsRepository.save(draftKey,{areas,selected,minRent,maxRent,bedrooms,bathrooms,furnishing,notes})},[areas,bathrooms,bedrooms,draftKey,furnishing,maxRent,minRent,notes,ready,selected]);
+  const draft={areas,selected,minRent,maxRent,bedrooms,bathrooms,furnishing,notes};
+  const draftAutosave=useDraftAutosave({enabled:ready,key:draftKey,value:draft,save:draftsRepository.save});
 
   const persist=async(matchAfterSave:boolean)=>{const minimum=minRent?Number(minRent):null;const maximum=maxRent?Number(maxRent):null;
     if(!savedContactId){Alert.alert(t('personMissing'));return}if(!areas.length||!selected.length||minimum===null||maximum===null){Alert.alert(t('incompleteData'),t('requirementRequired'));return}
     if(!Number.isFinite(minimum)||!Number.isFinite(maximum)||minimum<=0||maximum<minimum){Alert.alert(t('reviewRent'),t('rentRangeInvalid'));return}
     const now=new Date().toISOString();const value:Requirement={id:requirementId,contactId:savedContactId,areas,propertyTypes:selected,minRent:minimum,maxRent:maximum,minBedrooms:bedrooms,minBathrooms:bathrooms,furnishing,notes:notes.trim(),active:true,createdAt:createdAt??now,updatedAt:now};
-    await requirementsRepository.upsert(value);await draftsRepository.clear(draftKey);if(matchAfterSave)router.replace({pathname:'/match-results',params:{requirementId}});else router.replace({pathname:'/contact-detail',params:{id:savedContactId}})};
+    await requirementsRepository.upsert(value);await draftAutosave.cancel();await draftsRepository.clear(draftKey);if(matchAfterSave)router.replace({pathname:'/match-results',params:{requirementId}});else router.replace({pathname:'/contact-detail',params:{id:savedContactId}})};
 
-  return <SafeAreaView style={styles.page} edges={['top']}><AppHeader title={id?t('editRequirement'):t('addRequirement')}/><KeyboardAwareScrollViewCompat contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+  return <SafeAreaView style={styles.page} edges={['top']}><AppHeader title={id?t('editRequirement'):t('addRequirement')}/><KeyboardAwareScrollViewCompat contentContainerStyle={styles.content} keyboardShouldPersistTaps="always">
     <Text style={[styles.intro,{textAlign:isRTL?'right':'left'}]}>{t('requirementIntro')}</Text>
     <Text style={[styles.label,{textAlign:isRTL?'right':'left'}]}>{t('propertyTypeRequired')}</Text><View style={[styles.chips,{flexDirection:isRTL?'row-reverse':'row'}]}>{types.map(value=><Pressable key={value} onPress={()=>setSelected(old=>old.includes(value)?old.filter(x=>x!==value):[...old,value])}
       style={[styles.typeChip,selected.includes(value)&&styles.active]}><Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.78} style={[styles.chipText,selected.includes(value)&&styles.activeText]}>{getPropertyTypeLabel(language,value)}</Text></Pressable>)}</View>
