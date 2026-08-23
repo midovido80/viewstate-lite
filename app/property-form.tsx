@@ -39,6 +39,7 @@ export default function PropertyForm(){const {id,offeredByContactId}=useLocalSea
   const [ownerContactId,setOwnerContactId]=useState<string|null>(null);
   const [pendingMedia,setPendingMedia]=useState<Array<{uri:string;kind:'image'|'video'}>>([]);const [ready,setReady]=useState(false);const [saving,setSaving]=useState(false);
   const [originalCreatedAt,setOriginalCreatedAt]=useState<string|null>(null);
+  const [recoverableDraft,setRecoverableDraft]=useState<Draft|null>(null);const [dirty,setDirty]=useState(false);
   const saveLock=useRef(false);
   const formScroll=useRef<any>(null);const stepY=useRef<Record<string,number>>({});
   const rentRef=useRef<TextInput>(null);const sizeRef=useRef<TextInput>(null);const descriptionRef=useRef<TextInput>(null);
@@ -49,9 +50,10 @@ export default function PropertyForm(){const {id,offeredByContactId}=useLocalSea
     blockNumber:p.blockNumber,monthlyRent:String(p.monthlyRent),bedrooms:p.bedrooms,bathrooms:p.bathrooms,sizeSqm:p.sizeSqm?.toString()??'',furnishing:p.furnishing,
     description:p.description,privateNotes:p.privateNotes,paci:p.paci,mapUrl:p.mapUrl,latitude:p.latitude,longitude:p.longitude,
     paciNumberCount:p.paciNumberCount,activityType:p.activityType,status:p.status});setSourceContactId(p.offeredByContactId);setOwnerContactId(p.ownerContactId);setOriginalCreatedAt(p.createdAt)}}else{const draft=await draftsRepository.load<Partial<Draft>>(key);
-      if(draft)setForm({...empty,...draft,blockNumber:toBlockNumber(draft.blockNumber),bedrooms:toOptionalNumber(draft.bedrooms),bathrooms:toOptionalNumber(draft.bathrooms),
-        paciNumberCount:toOptionalNumber(draft.paciNumberCount)})}setReady(true)})()},[id,key]);
-  const draftAutosave=useDraftAutosave({enabled:ready,key,value:form,save:draftsRepository.save});
+      if(draft)setRecoverableDraft(normalizeDraft(draft))}setReady(true)})()},[id,key]);
+  const draftAutosave=useDraftAutosave({enabled:ready&&dirty,key,value:form,save:draftsRepository.save});
+  const changeForm=(next:Draft)=>{setDirty(true);setForm(next)};
+  const restoreDraft=()=>{if(!recoverableDraft)return;setForm(recoverableDraft);setRecoverableDraft(null);setDirty(true)};
 
   const capture=(step:string)=>(event:LayoutChangeEvent)=>{stepY.current[step]=event.nativeEvent.layout.y};
   const reveal=(step:string)=>{Keyboard.dismiss();const scroll=()=>formScroll.current?.scrollTo?.({y:Math.max(0,(stepY.current[step]??0)-12),animated:true});scroll();setTimeout(scroll,180)};
@@ -67,7 +69,7 @@ export default function PropertyForm(){const {id,offeredByContactId}=useLocalSea
     setLocationDraft(googleMapsUrl(position.coords.latitude,position.coords.longitude));
   };
   const saveLocation=()=>{const url=locationDraft.trim();if(!url){Alert.alert(t('chooseLocation'),t('chooseLocationMessage'));return}
-    const coordinates=parseCoordinatesFromMapUrl(url);setForm({...form,mapUrl:url,latitude:coordinates?.latitude??null,longitude:coordinates?.longitude??null});setLocationOpen(false)};
+    const coordinates=parseCoordinatesFromMapUrl(url);changeForm({...form,mapUrl:url,latitude:coordinates?.latitude??null,longitude:coordinates?.longitude??null});setLocationOpen(false)};
   const save=async()=>{if(saveLock.current)return;Keyboard.dismiss();const rent=Number(form.monthlyRent);const size=form.sizeSqm.trim()?Number(form.sizeSqm):null;if(!form.area.trim()||!Number.isFinite(rent)||rent<=0){Alert.alert(t('incompleteData'),t('propertyRequired'));return}
     if(size!==null&&(!Number.isFinite(size)||size<=0)){Alert.alert(t('incompleteData'),t('propertySizeInvalid'));return}
     saveLock.current=true;setSaving(true);await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));const now=new Date().toISOString();try{await propertiesRepository.upsert({id:propertyId,
@@ -78,7 +80,8 @@ export default function PropertyForm(){const {id,offeredByContactId}=useLocalSea
       ownerContactId,offeredByContactId:sourceContactId,status:form.status,createdAt:originalCreatedAt??now,updatedAt:now});
     let order=0;let failedMedia=0;for(const media of pendingMedia){try{const ext=media.uri.split('.').pop()??(media.kind==='video'?'mp4':'jpg');const uri=await persistMedia(media.uri,ext);
       await propertiesRepository.addMedia({id:createId('media'),propertyId,uri,kind:media.kind,sortOrder:order++,createdAt:now})}catch{failedMedia++}}
-    await draftAutosave.cancel();await draftsRepository.clear(key);const finish=()=>router.replace({pathname:'/property-detail',params:{id:propertyId}});
+    await draftAutosave.cancel();await draftsRepository.clear(key);setReady(false);setDirty(false);setRecoverableDraft(null);setForm({...empty});setPendingMedia([]);setLocationDraft('');
+    const finish=()=>router.replace({pathname:'/property-detail',params:{id:propertyId}});
     Alert.alert(t('propertySavedTitle'),failedMedia?t('propertySavedMediaWarning',{count:failedMedia}):t('propertySavedMessage'),[{text:t('finish'),onPress:finish}],{cancelable:false});
     }catch{Alert.alert(t('propertySaveFailedTitle'),t('propertySaveFailedMessage'))}finally{saveLock.current=false;setSaving(false)}};
 
@@ -86,30 +89,31 @@ export default function PropertyForm(){const {id,offeredByContactId}=useLocalSea
   const blockOptions=[{value:'none',label:t('notSpecified')},...blockValues.map(value=>({value,label:value}))];
   return <SafeAreaView style={styles.page} edges={['top']}><AppHeader title={id?t('editProperty'):t('addRentalProperty')}/>
     <KeyboardAwareScrollViewCompat ref={formScroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="always">
+      {!id&&recoverableDraft?<View style={styles.recovery}><Text style={[styles.recoveryText,{textAlign:isRTL?'right':'left'}]}>{t('restorePropertyDraftHint')}</Text><Pressable onPress={restoreDraft} style={styles.recoveryButton}><Text style={styles.recoveryButtonText}>{t('restorePropertyDraft')}</Text></Pressable></View>:null}
       <Text style={[styles.label,{textAlign:isRTL?'right':'left'}]}>{t('type')}</Text><View style={[styles.chips,{flexDirection:isRTL?'row-reverse':'row'}]}>{types.map(value=><Pressable key={value}
-        onPress={()=>setForm({...form,type:value})} style={[styles.typeChip,form.type===value&&styles.active]}><Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.78} style={[styles.chipText,form.type===value&&styles.activeText]}>{getPropertyTypeLabel(language,value)}</Text></Pressable>)}</View>
-      <View onLayout={capture('title')}><FormField label={t('shortPropertyName')} placeholder={t('shortPropertyExample')} value={form.title} onChangeText={title=>setForm({...form,title})} returnKeyType="next" onSubmitEditing={()=>reveal('area')}/></View>
+        onPress={()=>changeForm({...form,type:value})} style={[styles.typeChip,form.type===value&&styles.active]}><Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.78} style={[styles.chipText,form.type===value&&styles.activeText]}>{getPropertyTypeLabel(language,value)}</Text></Pressable>)}</View>
+      <View onLayout={capture('title')}><FormField label={t('shortPropertyName')} placeholder={t('shortPropertyExample')} value={form.title} onChangeText={title=>changeForm({...form,title})} returnKeyType="next" onSubmitEditing={()=>reveal('area')}/></View>
       <Text style={[styles.helper,{textAlign:isRTL?'right':'left'}]}>{t('shortPropertyHelp')}</Text>
-      <View onLayout={capture('area')}><AreaPicker value={form.area} onChange={area=>{setForm({...form,area});reveal('block')}}/></View>
+      <View onLayout={capture('area')}><AreaPicker value={form.area} onChange={area=>{changeForm({...form,area});reveal('block')}}/></View>
       <View onLayout={capture('block')}><ChoicePicker label={t('blockNumber')} value={form.blockNumber===null?'none':String(form.blockNumber)} placeholder={t('notSpecified')} options={blockOptions}
-        onChange={value=>{setForm({...form,blockNumber:value==='none'?null:Number(value)});setTimeout(()=>rentRef.current?.focus(),180)}}/></View>
-      <View onLayout={capture('rent')}><FormField ref={rentRef} label={`${t('rent')} *`} placeholder={t('currencyPlaceholder')} value={form.monthlyRent} keyboardType="numeric" returnKeyType="done" onSubmitEditing={()=>reveal(commercial?'bathrooms':'bedrooms')} onChangeText={monthlyRent=>setForm({...form,monthlyRent})}/></View>
-      {!commercial&&<View onLayout={capture('bedrooms')}><NumberPicker label={t('bedrooms')} value={form.bedrooms} onChange={bedrooms=>{setForm({...form,bedrooms});reveal('bathrooms')}}/></View>}
-      <View onLayout={capture('bathrooms')}><NumberPicker label={t('bathrooms')} value={form.bathrooms} onChange={bathrooms=>{setForm({...form,bathrooms});reveal(commercial?'commercial':'size')}}/></View>
+        onChange={value=>{changeForm({...form,blockNumber:value==='none'?null:Number(value)});setTimeout(()=>rentRef.current?.focus(),180)}}/></View>
+      <View onLayout={capture('rent')}><FormField ref={rentRef} label={`${t('rent')} *`} placeholder={t('currencyPlaceholder')} value={form.monthlyRent} keyboardType="numeric" returnKeyType="done" onSubmitEditing={()=>reveal(commercial?'bathrooms':'bedrooms')} onChangeText={monthlyRent=>changeForm({...form,monthlyRent})}/></View>
+      {!commercial&&<View onLayout={capture('bedrooms')}><NumberPicker label={t('bedrooms')} value={form.bedrooms} onChange={bedrooms=>{changeForm({...form,bedrooms});reveal('bathrooms')}}/></View>}
+      <View onLayout={capture('bathrooms')}><NumberPicker label={t('bathrooms')} value={form.bathrooms} onChange={bathrooms=>{changeForm({...form,bathrooms});reveal(commercial?'commercial':'size')}}/></View>
       {commercial&&<>
-        <View onLayout={capture('commercial')}><NumberPicker label={t('paciNumberCount')} value={form.paciNumberCount} onChange={paciNumberCount=>setForm({...form,paciNumberCount})}/>
+        <View onLayout={capture('commercial')}><NumberPicker label={t('paciNumberCount')} value={form.paciNumberCount} onChange={paciNumberCount=>changeForm({...form,paciNumberCount})}/>
         <ChoicePicker label={t('activityType')} value={form.activityType} placeholder={t('chooseActivity')} options={activityOptions}
-          onChange={activityType=>{setForm({...form,activityType});setTimeout(()=>sizeRef.current?.focus(),180)}}/></View>
+          onChange={activityType=>{changeForm({...form,activityType});setTimeout(()=>sizeRef.current?.focus(),180)}}/></View>
       </>}
-      <View onLayout={capture('size')}><FormField ref={sizeRef} label={t('sizeSqm')} value={form.sizeSqm} keyboardType="numeric" returnKeyType="next" onSubmitEditing={()=>descriptionRef.current?.focus()} onChangeText={sizeSqm=>setForm({...form,sizeSqm})}/></View>
-      <View onLayout={capture('description')}><FormField ref={descriptionRef} label={t('description')} value={form.description} multiline onFocus={()=>setTimeout(()=>formScroll.current?.scrollTo?.({y:Math.max(0,(stepY.current.description??0)-12),animated:true}),120)} onChangeText={description=>setForm({...form,description})}/></View>
+      <View onLayout={capture('size')}><FormField ref={sizeRef} label={t('sizeSqm')} value={form.sizeSqm} keyboardType="numeric" returnKeyType="next" onSubmitEditing={()=>descriptionRef.current?.focus()} onChangeText={sizeSqm=>changeForm({...form,sizeSqm})}/></View>
+      <View onLayout={capture('description')}><FormField ref={descriptionRef} label={t('description')} value={form.description} multiline onFocus={()=>setTimeout(()=>formScroll.current?.scrollTo?.({y:Math.max(0,(stepY.current.description??0)-12),animated:true}),120)} onChangeText={description=>changeForm({...form,description})}/></View>
       <Text style={[styles.label,{textAlign:isRTL?'right':'left'}]}>{t('furnishing')}</Text><View style={[styles.chips,{flexDirection:isRTL?'row-reverse':'row'}]}>{(['furnished','semi_furnished','unfurnished'] as const).map(value=><Pressable key={value}
-        onPress={()=>{setForm({...form,furnishing:value});reveal('status')}} style={[styles.chip,form.furnishing===value&&styles.active]}><Text style={[styles.chipText,form.furnishing===value&&styles.activeText]}>{getFurnishingLabel(language,value)}</Text></Pressable>)}</View>
+        onPress={()=>{changeForm({...form,furnishing:value});reveal('status')}} style={[styles.chip,form.furnishing===value&&styles.active]}><Text style={[styles.chipText,form.furnishing===value&&styles.activeText]}>{getFurnishingLabel(language,value)}</Text></Pressable>)}</View>
       <View onLayout={capture('status')}><Text style={[styles.label,{textAlign:isRTL?'right':'left'}]}>{t('propertyStatus')}</Text><View style={[styles.chips,{flexDirection:isRTL?'row-reverse':'row'}]}>{(['available','rented','paused'] as const).map(value=><Pressable key={value}
-        onPress={()=>setForm({...form,status:value})} style={[styles.chip,form.status===value&&styles.active]}><Text style={[styles.chipText,form.status===value&&styles.activeText]}>{t(value)}</Text></Pressable>)}</View>
+        onPress={()=>changeForm({...form,status:value})} style={[styles.chip,form.status===value&&styles.active]}><Text style={[styles.chipText,form.status===value&&styles.activeText]}>{t(value)}</Text></Pressable>)}</View>
       </View>
-      <FormField label={t('privateNotes')} value={form.privateNotes} multiline onChangeText={privateNotes=>setForm({...form,privateNotes})}/>
-      <FormField label={t('paci')} value={form.paci} keyboardType="numeric" onChangeText={paci=>setForm({...form,paci})}/>
+      <FormField label={t('privateNotes')} value={form.privateNotes} multiline onChangeText={privateNotes=>changeForm({...form,privateNotes})}/>
+      <FormField label={t('paci')} value={form.paci} keyboardType="numeric" onChangeText={paci=>changeForm({...form,paci})}/>
       <PrimaryButton title={form.mapUrl?t('locationSelected'):t('chooseGoogleLocation')} onPress={openLocation}/>
       <PrimaryButton title={t('addMedia',{count:pendingMedia.length})} onPress={pick}/><PrimaryButton title={saving?t('savingProperty'):t('saveProperty')} onPress={save} disabled={saving}/>
     </KeyboardAwareScrollViewCompat>
@@ -128,8 +132,10 @@ export default function PropertyForm(){const {id,offeredByContactId}=useLocalSea
 
 function toOptionalNumber(value:unknown):number|null{if(value===null||value===undefined||value==='')return null;const number=Number(value);return Number.isFinite(number)?number:null}
 function toBlockNumber(value:unknown):number|null{const number=toOptionalNumber(value);return number!==null&&Number.isInteger(number)&&number>=1&&number<=12?number:null}
+function normalizeDraft(draft:Partial<Draft>):Draft{return {...empty,...draft,blockNumber:toBlockNumber(draft.blockNumber),bedrooms:toOptionalNumber(draft.bedrooms),bathrooms:toOptionalNumber(draft.bathrooms),paciNumberCount:toOptionalNumber(draft.paciNumberCount)}}
 
 const styles=StyleSheet.create({page:{flex:1,backgroundColor:colors.background},content:{padding:spacing.md,gap:spacing.md,paddingBottom:spacing.xl*5},
+  recovery:{borderWidth:1,borderColor:colors.blue,borderRadius:radius.md,backgroundColor:'#EEF6FF',padding:spacing.md,gap:spacing.sm},recoveryText:{color:colors.text,lineHeight:22},recoveryButton:{minHeight:44,borderRadius:radius.sm,backgroundColor:colors.blue,alignItems:'center',justifyContent:'center',paddingHorizontal:spacing.md},recoveryButtonText:{color:'white',fontWeight:'800',textAlign:'center'},
   label:{fontWeight:'600',textAlign:'right',color:colors.text},helper:{fontSize:13,color:colors.muted,textAlign:'right',marginTop:-spacing.sm},
   chips:{flexDirection:'row-reverse',flexWrap:'wrap',gap:spacing.sm},chip:{minHeight:48,borderWidth:1,borderColor:colors.border,borderRadius:radius.lg,paddingHorizontal:spacing.md,paddingVertical:10,alignItems:'center',justifyContent:'center',backgroundColor:'white'},typeChip:{width:'30.5%',minHeight:58,borderWidth:1,borderColor:colors.border,borderRadius:radius.lg,paddingHorizontal:8,paddingVertical:10,alignItems:'center',justifyContent:'center',backgroundColor:'white'},chipText:{color:colors.text,fontWeight:'700',textAlign:'center'},
   active:{backgroundColor:colors.blue,borderColor:colors.blue},activeText:{color:'white',fontWeight:'700'},locationPage:{flex:1,backgroundColor:colors.background},
