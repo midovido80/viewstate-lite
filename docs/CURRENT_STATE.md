@@ -6,20 +6,21 @@ Date: 2026-08-23
 
 - Isolated Expo 54 project with Android package `com.viewstate.lite`
 - Arabic-first light V001 shell and native tab navigation
-- LITE-03 Interaction Reliability Hotfix / V0.5.3 on top of the hardened A3.1 import engine
+- LITE-03 Simplicity Correction / V0.5.4 including the V0.5.3 interaction-reliability fixes
 - Local SQLite v5 schema with additive, versioned migrations
 - Multiple phone numbers per person with one Primary number
 - `contact_phones` as the authoritative source and `contacts.phone` as a transitional Primary mirror
 - Contacts, five approved roles and offline E.164 phone normalization
 - Batched device-contact import with one classification for the whole batch, full-row selection, visible-result controls, and verbatim device names/notes
 - Per-contact role overrides are removed from the import UI to restore the approved simple A2 interaction
-- Phone-level import preflight keeps valid numbers executable while reporting invalid, stored and intra-batch conflicts; same-number Android service aliases inside one contact are silently collapsed
-- Intra-batch shared numbers use an explicit single-owner radio choice with no first-row winner
+- Phone import is reachable only from Add person; duplicate Home and Contacts-tab shortcuts are removed
+- Import cards show only executable people and usable phones; technical conflicts stay enforced below the UI without card clutter
+- Phone-level import preflight keeps valid numbers executable while excluding invalid, stored and unresolved intra-batch conflicts; same-number Android service aliases inside one contact are silently collapsed
 - Atomic executable-row import with full rollback on an unexpected technical write failure
 - Central Domain Import Plan for executable rows, roles, Primary assignment and report totals
 - Final repository preflight excludes newly discovered stored conflicts per phone without blocking unrelated executable rows
 - Minimal phone metadata aligned with the approved `isPossible()` policy
-- Compact transient import summary with expandable issue details
+- Compact import success summary contains only saved people and phone totals
 - Device-contact import preserves and imports every usable phone display value and available label
 - LITE-02.1 complete Arabic/English UI localization with locally persisted language selection
 - Complete approved contact-role and property-type labels without abbreviation
@@ -51,7 +52,7 @@ Date: 2026-08-23
 ## Verified
 
 - Domain and migration suite expanded for international numbers, multiple numbers, Primary rules, search, actions, import and Backup V2
-- Import-control suite covers mixed valid/invalid rows, phone-level conflicts, batch ownership, selection, role overrides and 5,000-contact synthetic preparation
+- Import-control suite covers mixed valid/invalid rows, phone-level conflicts, safe selection and 5,000-contact synthetic preparation
 - Compliance suite injects a real SQLite write failure to verify full atomic rollback and covers late conflicts, report totals and UI interaction contracts
 - Git whitespace validation: passing
 - Current repository is independent from `viewstate-app`
