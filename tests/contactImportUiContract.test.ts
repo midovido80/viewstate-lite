@@ -4,9 +4,11 @@ import test from 'node:test';
 
 const source=readFileSync('app/contact-import.tsx','utf8');
 
-test('contact row owns selection while role, conflict, and radio controls stop tap propagation',()=>{
+test('contact row owns selection while conflict controls stop tap propagation',()=>{
   assert.match(source,/Pressable onPress=\{\(\)=>toggle\(item\)\}/);assert.match(source,/const stop=\(event:GestureResponderEvent\)=>event\.stopPropagation\(\)/);
-  assert.ok((source.match(/stop\(event\)/g)??[]).length>=3);assert.match(source,/checked&&styles\.selectedRow/);
+  assert.ok((source.match(/stop\(event\)/g)??[]).length>=2);assert.match(source,/checked&&styles\.selectedRow/);
+  assert.match(source,/label=\{t\('importRole'\)\}/);assert.match(source,/roleOverrides:NO_ROLE_OVERRIDES/);
+  assert.doesNotMatch(source,/rowRole|roleTarget|applyRoleToSelected|setRoleOverrides/);
 });
 
 test('import starts with an empty selection and filtering does not replace selected state',()=>{

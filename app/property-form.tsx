@@ -1,5 +1,5 @@
-import {useEffect,useState} from 'react';
-import {Alert,Linking,Modal,Pressable,StyleSheet,Text,View} from 'react-native';
+import {useEffect,useRef,useState} from 'react';
+import {Alert,Keyboard,Linking,Modal,Pressable,StyleSheet,Text,View} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import {router,useLocalSearchParams} from 'expo-router';
@@ -36,17 +36,19 @@ export default function PropertyForm(){const {id,offeredByContactId}=useLocalSea
   const key=id?`property:${id}`:'property:new';const [form,setForm]=useState<Draft>(empty);
   const [sourceContactId,setSourceContactId]=useState<string|null>(offeredByContactId??null);
   const [ownerContactId,setOwnerContactId]=useState<string|null>(null);
-  const [pendingMedia,setPendingMedia]=useState<Array<{uri:string;kind:'image'|'video'}>>([]);const [ready,setReady]=useState(false);
+  const [pendingMedia,setPendingMedia]=useState<Array<{uri:string;kind:'image'|'video'}>>([]);const [ready,setReady]=useState(false);const [saving,setSaving]=useState(false);
+  const [originalCreatedAt,setOriginalCreatedAt]=useState<string|null>(null);
+  const saveLock=useRef(false);
   const [locationOpen,setLocationOpen]=useState(false);const [locationDraft,setLocationDraft]=useState('');
   const commercial=usesCommercialDetails(form.type);
 
   useEffect(()=>{void (async()=>{if(id){const p=await propertiesRepository.get(id);if(p){setForm({title:p.title,type:p.type,area:p.area,
     blockNumber:p.blockNumber,monthlyRent:String(p.monthlyRent),bedrooms:p.bedrooms,bathrooms:p.bathrooms,sizeSqm:p.sizeSqm?.toString()??'',furnishing:p.furnishing,
     description:p.description,privateNotes:p.privateNotes,paci:p.paci,mapUrl:p.mapUrl,latitude:p.latitude,longitude:p.longitude,
-    paciNumberCount:p.paciNumberCount,activityType:p.activityType,status:p.status});setSourceContactId(p.offeredByContactId);setOwnerContactId(p.ownerContactId)}}else{const draft=await draftsRepository.load<Partial<Draft>>(key);
+    paciNumberCount:p.paciNumberCount,activityType:p.activityType,status:p.status});setSourceContactId(p.offeredByContactId);setOwnerContactId(p.ownerContactId);setOriginalCreatedAt(p.createdAt)}}else{const draft=await draftsRepository.load<Partial<Draft>>(key);
       if(draft)setForm({...empty,...draft,blockNumber:toBlockNumber(draft.blockNumber),bedrooms:toOptionalNumber(draft.bedrooms),bathrooms:toOptionalNumber(draft.bathrooms),
         paciNumberCount:toOptionalNumber(draft.paciNumberCount)})}setReady(true)})()},[id,key]);
-  useEffect(()=>{if(ready)void draftsRepository.save(key,form)},[form,key,ready]);
+  useEffect(()=>{if(!ready)return;const timeout=setTimeout(()=>{void draftsRepository.save(key,form)},350);return()=>clearTimeout(timeout)},[form,key,ready]);
 
   const pick=async()=>{const result=await ImagePicker.launchImageLibraryAsync({mediaTypes:['images','videos'],allowsMultipleSelection:true,quality:.85});
     if(!result.canceled)setPendingMedia(old=>[...old,...result.assets.map(asset=>({uri:asset.uri,kind:asset.type==='video'?'video' as const:'image' as const}))])};
@@ -60,16 +62,19 @@ export default function PropertyForm(){const {id,offeredByContactId}=useLocalSea
   };
   const saveLocation=()=>{const url=locationDraft.trim();if(!url){Alert.alert(t('chooseLocation'),t('chooseLocationMessage'));return}
     const coordinates=parseCoordinatesFromMapUrl(url);setForm({...form,mapUrl:url,latitude:coordinates?.latitude??null,longitude:coordinates?.longitude??null});setLocationOpen(false)};
-  const save=async()=>{const rent=Number(form.monthlyRent);if(!form.area.trim()||!Number.isFinite(rent)||rent<=0){Alert.alert(t('incompleteData'),t('propertyRequired'));return}
-    const now=new Date().toISOString();await propertiesRepository.upsert({id:propertyId,
+  const save=async()=>{if(saveLock.current)return;Keyboard.dismiss();const rent=Number(form.monthlyRent);const size=form.sizeSqm.trim()?Number(form.sizeSqm):null;if(!form.area.trim()||!Number.isFinite(rent)||rent<=0){Alert.alert(t('incompleteData'),t('propertyRequired'));return}
+    if(size!==null&&(!Number.isFinite(size)||size<=0)){Alert.alert(t('incompleteData'),t('propertySizeInvalid'));return}
+    saveLock.current=true;setSaving(true);const now=new Date().toISOString();try{await propertiesRepository.upsert({id:propertyId,
       title:form.title.trim()||`${getPropertyTypeLabel(language,form.type)} — ${form.area.trim()}`,type:form.type,area:form.area.trim(),blockNumber:form.blockNumber,monthlyRent:rent,
-      bedrooms:commercial?null:form.bedrooms,bathrooms:form.bathrooms,sizeSqm:form.sizeSqm?Number(form.sizeSqm):null,furnishing:form.furnishing,
+      bedrooms:commercial?null:form.bedrooms,bathrooms:form.bathrooms,sizeSqm:size,furnishing:form.furnishing,
       description:form.description.trim(),privateNotes:form.privateNotes.trim(),paci:form.paci.trim(),mapUrl:form.mapUrl.trim(),latitude:form.latitude,
       longitude:form.longitude,paciNumberCount:commercial?form.paciNumberCount:null,activityType:commercial?form.activityType:null,
-      ownerContactId,offeredByContactId:sourceContactId,status:form.status,createdAt:now,updatedAt:now});
-    let order=0;for(const media of pendingMedia){const ext=media.uri.split('.').pop()??(media.kind==='video'?'mp4':'jpg');const uri=await persistMedia(media.uri,ext);
-      await propertiesRepository.addMedia({id:createId('media'),propertyId,uri,kind:media.kind,sortOrder:order++,createdAt:now})}
-    await draftsRepository.clear(key);router.replace({pathname:'/property-detail',params:{id:propertyId}})};
+      ownerContactId,offeredByContactId:sourceContactId,status:form.status,createdAt:originalCreatedAt??now,updatedAt:now});
+    let order=0;let failedMedia=0;for(const media of pendingMedia){try{const ext=media.uri.split('.').pop()??(media.kind==='video'?'mp4':'jpg');const uri=await persistMedia(media.uri,ext);
+      await propertiesRepository.addMedia({id:createId('media'),propertyId,uri,kind:media.kind,sortOrder:order++,createdAt:now})}catch{failedMedia++}}
+    await draftsRepository.clear(key);const finish=()=>router.replace({pathname:'/property-detail',params:{id:propertyId}});
+    Alert.alert(t('propertySavedTitle'),failedMedia?t('propertySavedMediaWarning',{count:failedMedia}):t('propertySavedMessage'),[{text:t('finish'),onPress:finish}],{cancelable:false});
+    }catch{Alert.alert(t('propertySaveFailedTitle'),t('propertySaveFailedMessage'))}finally{saveLock.current=false;setSaving(false)}};
 
   const activityOptions=activityValues.map(value=>({value,label:getActivityLabel(language,value)}));
   const blockOptions=[{value:'none',label:t('notSpecified')},...blockValues.map(value=>({value,label:value}))];
@@ -99,16 +104,16 @@ export default function PropertyForm(){const {id,offeredByContactId}=useLocalSea
       <FormField label={t('privateNotes')} value={form.privateNotes} multiline onChangeText={privateNotes=>setForm({...form,privateNotes})}/>
       <FormField label={t('paci')} value={form.paci} keyboardType="numeric" onChangeText={paci=>setForm({...form,paci})}/>
       <PrimaryButton title={form.mapUrl?t('locationSelected'):t('chooseGoogleLocation')} onPress={openLocation}/>
-      <PrimaryButton title={t('addMedia',{count:pendingMedia.length})} onPress={pick}/><PrimaryButton title={t('saveProperty')} onPress={save}/>
+      <PrimaryButton title={t('addMedia',{count:pendingMedia.length})} onPress={pick}/><PrimaryButton title={saving?t('savingProperty'):t('saveProperty')} onPress={save} disabled={saving}/>
     </KeyboardAwareScrollViewCompat>
     <Modal visible={locationOpen} animationType="slide" onRequestClose={()=>setLocationOpen(false)}>
       <SafeAreaView style={styles.locationPage}>
         <View style={[styles.locationHeader,{flexDirection:isRTL?'row':'row-reverse'}]}><Pressable onPress={()=>setLocationOpen(false)}><Text style={styles.cancel}>{t('cancel')}</Text></Pressable><Text style={styles.locationTitle}>{t('choosePropertyLocation')}</Text></View>
-        <View style={styles.locationContent}><Text style={[styles.locationHelp,{textAlign:isRTL?'right':'left'}]}>{t('locationHelp')}</Text>
+        <KeyboardAwareScrollViewCompat contentContainerStyle={styles.locationContent} keyboardShouldPersistTaps="handled"><Text style={[styles.locationHelp,{textAlign:isRTL?'right':'left'}]}>{t('locationHelp')}</Text>
           <PrimaryButton title={t('openGoogleMaps')} onPress={launchGoogleMaps}/>
           <FormField label={t('map')} placeholder={t('pasteMapLink')} value={locationDraft} onChangeText={setLocationDraft} autoCapitalize="none"/>
           <Text style={styles.or}>{t('or')}</Text><PrimaryButton title={t('useCurrentLocation')} onPress={useCurrentLocation}/>
-          <PrimaryButton title={t('saveLocation')} onPress={saveLocation} color={colors.green}/></View>
+          <PrimaryButton title={t('saveLocation')} onPress={saveLocation} color={colors.green}/></KeyboardAwareScrollViewCompat>
       </SafeAreaView>
     </Modal>
   </SafeAreaView>;
