@@ -1,0 +1,33 @@
+appId: com.viewstate.lite
+---
+- launchApp
+- tapOn: "الأشخاص"
+- tapOn: "QA Person"
+- tapOn: "+ إضافة مطلوب"
+- tapOn: "شقة"
+- tapOn: "اختر منطقة أو أكثر"
+- tapOn: "الشرق"
+- tapOn:
+    point: "10%,4%"
+- tapOn:
+    id: "requirement-min-rent"
+- inputText: "600"
+- tapOn:
+    id: "requirement-max-rent"
+- inputText: "700"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "requirement-notes"
+    direction: DOWN
+- tapOn:
+    id: "requirement-notes"
+- inputText: "QA matching notes and keyboard visibility"
+- takeScreenshot: "requirement-notes-keyboard"
+- hideKeyboard
+- tapOn:
+    id: "requirement-save-match"
+- assertVisible: "العقارات المطابقة"
+- assertVisible: "QA Salmiya Apartment"
+- tapOn: "المطابقات"
+- assertVisible: "QA Salmiya Apartment"

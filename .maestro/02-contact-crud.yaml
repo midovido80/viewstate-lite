@@ -1,0 +1,38 @@
+appId: com.viewstate.lite
+---
+- launchApp
+- tapOn: "إضافة شخص"
+- tapOn: "إضافة يدويًا"
+- tapOn:
+    id: "contact-name"
+- inputText: "QA Person"
+- tapOn:
+    id: "contact-phone-0"
+- inputText: "55551234"
+- hideKeyboard
+- tapOn:
+    id: "contact-role-owner"
+- scrollUntilVisible:
+    element:
+      id: "contact-notes"
+    direction: DOWN
+- tapOn:
+    id: "contact-notes"
+- inputText: "QA contact notes keyboard visibility"
+- takeScreenshot: "contact-notes-keyboard"
+- hideKeyboard
+- tapOn:
+    id: "contact-save"
+- assertVisible: "تفاصيل الشخص"
+- assertVisible: "QA Person"
+- tapOn: "تعديل بيانات الشخص"
+- tapOn:
+    id: "contact-role-tenant"
+- scrollUntilVisible:
+    element:
+      text: "حفظ"
+    direction: DOWN
+- tapOn:
+    id: "contact-save"
+- assertVisible: "QA Person"
+- assertVisible: "باحث للإيجار"

@@ -1,0 +1,15 @@
+appId: com.viewstate.lite
+---
+- launchApp
+- tapOn: "الرئيسية"
+- tapOn: "ابحث عن عقار أو شخص"
+- inputText: "QA Person"
+- takeScreenshot: "global-search-keyboard"
+- assertVisible: "QA Person"
+- eraseText: 30
+- inputText: "55551234"
+- assertVisible: "QA Person"
+- eraseText: 30
+- inputText: "QA Salmiya"
+- assertVisible: "QA Salmiya Apartment"
+- hideKeyboard

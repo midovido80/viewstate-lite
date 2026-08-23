@@ -1,0 +1,30 @@
+appId: com.viewstate.lite
+---
+- launchApp
+- tapOn: "المزيد"
+- tapOn: "English"
+- assertVisible: "Data protection"
+- tapOn: "العربية"
+- tapOn:
+    id: "backup-create"
+- assertVisible: "تنبيه مهم قبل النسخ الاحتياطي"
+- tapOn: "إلغاء"
+- tapOn:
+    id: "backup-create"
+- tapOn: "متابعة وإنشاء النسخة"
+- assertVisible: "Sharing 1 file"
+- takeScreenshot: "backup-share-sheet"
+- pressKey: BACK
+- tapOn:
+    id: "backup-restore"
+- assertVisible: "Recent"
+- takeScreenshot: "backup-restore-picker"
+- pressKey: BACK
+- assertVisible: "تمت الاستعادة"
+- tapOn: "OK"
+- tapOn: "الرئيسية"
+- tapOn: "استيراد من الهاتف"
+- tapOn:
+    text: "Allow"
+    optional: true
+- assertVisible: "الدور الافتراضي للدفعة"

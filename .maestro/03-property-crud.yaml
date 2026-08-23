@@ -1,0 +1,59 @@
+appId: com.viewstate.lite
+---
+- launchApp
+- tapOn: "الرئيسية"
+- tapOn: "إضافة عقار"
+- tapOn:
+    id: "property-title"
+- inputText: "QA Salmiya Apartment"
+- hideKeyboard
+- tapOn:
+    id: "property-area"
+- tapOn: "الشرق"
+- tapOn:
+    id: "property-block"
+- assertVisible: "1"
+- tapOn: "3"
+- tapOn:
+    id: "property-rent"
+- inputText: "650"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "property-description"
+    direction: DOWN
+- tapOn:
+    id: "property-description"
+- inputText: "QA public property description"
+- takeScreenshot: "property-description-keyboard"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "property-private-notes"
+    direction: DOWN
+- tapOn:
+    id: "property-private-notes"
+- inputText: "QA private notes must remain private"
+- takeScreenshot: "property-private-notes-keyboard"
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "property-location-open"
+    direction: DOWN
+- tapOn:
+    id: "property-location-open"
+- tapOn:
+    id: "property-map-url"
+- inputText: "https://maps.google.com/?q=29.3375,48.0750"
+- takeScreenshot: "location-url-keyboard"
+- hideKeyboard
+- tapOn:
+    id: "property-location-save"
+- scrollUntilVisible:
+    element:
+      text: "حفظ العقار"
+    direction: DOWN
+- tapOn:
+    id: "property-save"
+- assertVisible: "تفاصيل العقار"
+- assertVisible: "QA Salmiya Apartment"

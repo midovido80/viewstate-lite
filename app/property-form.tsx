@@ -77,12 +77,12 @@ export default function PropertyForm(){const {id,offeredByContactId}=useLocalSea
     <KeyboardAwareScrollViewCompat contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={[styles.label,{textAlign:isRTL?'right':'left'}]}>{t('type')}</Text><View style={[styles.chips,{flexDirection:isRTL?'row-reverse':'row'}]}>{types.map(value=><Pressable key={value}
         onPress={()=>setForm({...form,type:value})} style={[styles.typeChip,form.type===value&&styles.active]}><Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.78} style={[styles.chipText,form.type===value&&styles.activeText]}>{getPropertyTypeLabel(language,value)}</Text></Pressable>)}</View>
-      <FormField label={t('shortPropertyName')} placeholder={t('shortPropertyExample')} value={form.title} onChangeText={title=>setForm({...form,title})}/>
+      <FormField testID="property-title" label={t('shortPropertyName')} placeholder={t('shortPropertyExample')} value={form.title} onChangeText={title=>setForm({...form,title})}/>
       <Text style={[styles.helper,{textAlign:isRTL?'right':'left'}]}>{t('shortPropertyHelp')}</Text>
-      <AreaPicker value={form.area} onChange={area=>setForm({...form,area})}/>
-      <ChoicePicker label={t('blockNumber')} value={form.blockNumber===null?'none':String(form.blockNumber)} placeholder={t('notSpecified')} options={blockOptions}
+      <AreaPicker testID="property-area" value={form.area} onChange={area=>setForm({...form,area})}/>
+      <ChoicePicker testID="property-block" label={t('blockNumber')} value={form.blockNumber===null?'none':String(form.blockNumber)} placeholder={t('notSpecified')} options={blockOptions}
         onChange={value=>setForm({...form,blockNumber:value==='none'?null:Number(value)})}/>
-      <FormField label={`${t('rent')} *`} placeholder={t('currencyPlaceholder')} value={form.monthlyRent} keyboardType="numeric" onChangeText={monthlyRent=>setForm({...form,monthlyRent})}/>
+      <FormField testID="property-rent" label={`${t('rent')} *`} placeholder={t('currencyPlaceholder')} value={form.monthlyRent} keyboardType="numeric" onChangeText={monthlyRent=>setForm({...form,monthlyRent})}/>
       {!commercial&&<NumberPicker label={t('bedrooms')} value={form.bedrooms} onChange={bedrooms=>setForm({...form,bedrooms})}/>}
       <NumberPicker label={t('bathrooms')} value={form.bathrooms} onChange={bathrooms=>setForm({...form,bathrooms})}/>
       {commercial&&<>
@@ -90,25 +90,25 @@ export default function PropertyForm(){const {id,offeredByContactId}=useLocalSea
         <ChoicePicker label={t('activityType')} value={form.activityType} placeholder={t('chooseActivity')} options={activityOptions}
           onChange={activityType=>setForm({...form,activityType})}/>
       </>}
-      <FormField label={t('sizeSqm')} value={form.sizeSqm} keyboardType="numeric" onChangeText={sizeSqm=>setForm({...form,sizeSqm})}/>
-      <FormField label={t('description')} value={form.description} multiline onChangeText={description=>setForm({...form,description})}/>
+      <FormField testID="property-size" label={t('sizeSqm')} value={form.sizeSqm} keyboardType="numeric" onChangeText={sizeSqm=>setForm({...form,sizeSqm})}/>
+      <FormField testID="property-description" label={t('description')} value={form.description} multiline onChangeText={description=>setForm({...form,description})}/>
       <Text style={[styles.label,{textAlign:isRTL?'right':'left'}]}>{t('furnishing')}</Text><View style={[styles.chips,{flexDirection:isRTL?'row-reverse':'row'}]}>{(['furnished','semi_furnished','unfurnished'] as const).map(value=><Pressable key={value}
         onPress={()=>setForm({...form,furnishing:value})} style={[styles.chip,form.furnishing===value&&styles.active]}><Text style={[styles.chipText,form.furnishing===value&&styles.activeText]}>{getFurnishingLabel(language,value)}</Text></Pressable>)}</View>
       <Text style={[styles.label,{textAlign:isRTL?'right':'left'}]}>{t('propertyStatus')}</Text><View style={[styles.chips,{flexDirection:isRTL?'row-reverse':'row'}]}>{(['available','rented','paused'] as const).map(value=><Pressable key={value}
         onPress={()=>setForm({...form,status:value})} style={[styles.chip,form.status===value&&styles.active]}><Text style={[styles.chipText,form.status===value&&styles.activeText]}>{t(value)}</Text></Pressable>)}</View>
-      <FormField label={t('privateNotes')} value={form.privateNotes} multiline onChangeText={privateNotes=>setForm({...form,privateNotes})}/>
-      <FormField label={t('paci')} value={form.paci} keyboardType="numeric" onChangeText={paci=>setForm({...form,paci})}/>
-      <PrimaryButton title={form.mapUrl?t('locationSelected'):t('chooseGoogleLocation')} onPress={openLocation}/>
-      <PrimaryButton title={t('addMedia',{count:pendingMedia.length})} onPress={pick}/><PrimaryButton title={t('saveProperty')} onPress={save}/>
+      <FormField testID="property-private-notes" label={t('privateNotes')} value={form.privateNotes} multiline onChangeText={privateNotes=>setForm({...form,privateNotes})}/>
+      <FormField testID="property-paci" label={t('paci')} value={form.paci} keyboardType="numeric" onChangeText={paci=>setForm({...form,paci})}/>
+      <PrimaryButton testID="property-location-open" title={form.mapUrl?t('locationSelected'):t('chooseGoogleLocation')} onPress={openLocation}/>
+      <PrimaryButton title={t('addMedia',{count:pendingMedia.length})} onPress={pick}/><PrimaryButton testID="property-save" title={t('saveProperty')} onPress={save}/>
     </KeyboardAwareScrollViewCompat>
     <Modal visible={locationOpen} animationType="slide" onRequestClose={()=>setLocationOpen(false)}>
       <SafeAreaView style={styles.locationPage}>
         <View style={[styles.locationHeader,{flexDirection:isRTL?'row':'row-reverse'}]}><Pressable onPress={()=>setLocationOpen(false)}><Text style={styles.cancel}>{t('cancel')}</Text></Pressable><Text style={styles.locationTitle}>{t('choosePropertyLocation')}</Text></View>
         <View style={styles.locationContent}><Text style={[styles.locationHelp,{textAlign:isRTL?'right':'left'}]}>{t('locationHelp')}</Text>
           <PrimaryButton title={t('openGoogleMaps')} onPress={launchGoogleMaps}/>
-          <FormField label={t('map')} placeholder={t('pasteMapLink')} value={locationDraft} onChangeText={setLocationDraft} autoCapitalize="none"/>
+          <FormField testID="property-map-url" label={t('map')} placeholder={t('pasteMapLink')} value={locationDraft} onChangeText={setLocationDraft} autoCapitalize="none"/>
           <Text style={styles.or}>{t('or')}</Text><PrimaryButton title={t('useCurrentLocation')} onPress={useCurrentLocation}/>
-          <PrimaryButton title={t('saveLocation')} onPress={saveLocation} color={colors.green}/></View>
+          <PrimaryButton testID="property-location-save" title={t('saveLocation')} onPress={saveLocation} color={colors.green}/></View>
       </SafeAreaView>
     </Modal>
   </SafeAreaView>;

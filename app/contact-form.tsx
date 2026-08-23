@@ -56,18 +56,18 @@ export default function ContactForm(){
   };
 
   return <SafeAreaView style={styles.page} edges={['top']}><AppHeader title={id?t('editPerson'):t('addManualPerson')}/><KeyboardAwareScrollViewCompat contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-    <FormField label={t('name')} value={form.name} onChangeText={name=>setForm({...form,name})}/>
+    <FormField testID="contact-name" label={t('name')} value={form.name} onChangeText={name=>setForm({...form,name})}/>
     <Text style={[styles.sectionLabel,{textAlign:isRTL?'right':'left'}]}>{t('phoneNumbers')}</Text>
     {form.phones.map((phone,index)=><View key={phone.key} style={styles.phoneCard}>
       <View style={[styles.phoneHeader,{flexDirection:isRTL?'row-reverse':'row'}]}><Pressable onPress={()=>choosePrimary(phone.key)}><Text style={[styles.primary,phone.isPrimary&&styles.primaryActive]}>{phone.isPrimary?t('primaryPhone'):t('makePrimary')}</Text></Pressable>
         {form.phones.length>1?<Pressable onPress={()=>removePhone(phone.key)}><Text style={styles.remove}>{t('removePhone')}</Text></Pressable>:null}</View>
-      <FormField label={`${t('phone')} ${index+1}`} value={phone.display} keyboardType="phone-pad" onChangeText={display=>updatePhone(phone.key,{display})}/>
-      <FormField label={t('phoneLabel')} value={phone.label} onChangeText={label=>updatePhone(phone.key,{label})}/>
+      <FormField testID={`contact-phone-${index}`} label={`${t('phone')} ${index+1}`} value={phone.display} keyboardType="phone-pad" onChangeText={display=>updatePhone(phone.key,{display})}/>
+      <FormField testID={`contact-phone-label-${index}`} label={t('phoneLabel')} value={phone.label} onChangeText={label=>updatePhone(phone.key,{label})}/>
     </View>)}
     <PrimaryButton title={t('addPhoneNumber')} onPress={()=>setForm(old=>({...old,phones:[...old.phones,newPhone(false)]}))}/>
     <Text style={[styles.label,{textAlign:isRTL?'right':'left'}]}>{t('role')}</Text><View style={[styles.roles,{flexDirection:isRTL?'row-reverse':'row'}]}>{roles.map(value=><Pressable
-      key={value} onPress={()=>setForm({...form,role:value})} style={[styles.chip,form.role===value&&styles.active]}><Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.chipText,form.role===value&&styles.activeText]}>{getRoleLabel(language,value)}</Text></Pressable>)}</View>
-    <FormField label={t('notes')} value={form.notes} multiline onChangeText={notes=>setForm({...form,notes})}/><PrimaryButton title={t('save')} onPress={save}/>
+      testID={`contact-role-${value}`} key={value} onPress={()=>setForm({...form,role:value})} style={[styles.chip,form.role===value&&styles.active]}><Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.chipText,form.role===value&&styles.activeText]}>{getRoleLabel(language,value)}</Text></Pressable>)}</View>
+    <FormField testID="contact-notes" label={t('notes')} value={form.notes} multiline onChangeText={notes=>setForm({...form,notes})}/><PrimaryButton testID="contact-save" title={t('save')} onPress={save}/>
   </KeyboardAwareScrollViewCompat></SafeAreaView>;
 }
 
