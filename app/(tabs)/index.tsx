@@ -10,7 +10,6 @@ export default function Home(){const {t,isRTL}=useI18n();return <SafeAreaView st
     <View style={[styles.grid,{flexDirection:isRTL?'row-reverse':'row'}]}>
       <Card title={t('addContact')} onPress={()=>router.push('/contact-add')}/>
       <Card title={t('addProperty')} onPress={()=>router.push('/property-form')}/>
-      <Card title={t('importContacts')} onPress={()=>router.push('/contact-import')}/>
       <Card title={t('matches')} onPress={()=>router.push('/(tabs)/matches')}/>
     </View>
   </View></SafeAreaView>}
