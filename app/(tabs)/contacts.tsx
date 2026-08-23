@@ -11,8 +11,7 @@ import {colors,radius,spacing} from '@/theme/tokens';
 export default function ContactsScreen(){const {t,isRTL,language}=useI18n();const [items,setItems]=useState<Contact[]>([]);
   const load=useCallback(()=>{contactsRepository.list().then(setItems)},[]);useFocusEffect(useCallback(()=>{load()},[load]));
   return <SafeAreaView style={styles.page} edges={['top']}><AppHeader title={t('contacts')}/>
-    <View style={styles.actions}><PrimaryButton title={t('addContact')} onPress={()=>router.push('/contact-add')}/>
-      <PrimaryButton title={t('importContacts')} onPress={()=>router.push('/contact-import')}/></View>
+    <View style={styles.actions}><PrimaryButton title={t('addContact')} onPress={()=>router.push('/contact-add')}/></View>
     <FlatList data={items} keyExtractor={x=>x.id} contentContainerStyle={styles.list}
       ListEmptyComponent={<Text style={styles.empty}>{t('noContacts')}</Text>}
       renderItem={({item})=><Pressable onPress={()=>router.push({pathname:'/contact-detail',params:{id:item.id}})} style={styles.card}>

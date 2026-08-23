@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {candidateIsExecutable,clearVisibleSelection,executablePhones,issueCounts,prepareDeviceContactRows,prepareDeviceContactRowsChunked,removeNonExecutableSelection,resolvedRole,selectExecutable} from '../src/features/contacts/deviceImport.ts';
+import {candidateIsExecutable,clearVisibleSelection,DevicePreparationCancelledError,executablePhones,issueCounts,prepareDeviceContactRows,prepareDeviceContactRowsChunked,removeNonExecutableSelection,resolvedRole,selectExecutable} from '../src/features/contacts/deviceImport.ts';
 import {chunkValues} from '../src/lib/batches.ts';
 
 test('keeps a contact visible and imports its valid number when another number is invalid',()=>{
@@ -45,6 +45,25 @@ test('individual role overrides win while untouched rows follow the changing bat
 test('chunked preparation yields between chunks and normalizes 5000 synthetic contacts',async()=>{
   const inputs=Array.from({length:5000},(_,index)=>({key:`c${index}`,name:`Contact ${index}`,phones:[{number:`+1${String(2020000000+index)}`}]}));let yields=0;
   const result=await prepareDeviceContactRowsChunked(inputs,[],100,async()=>{yields++});assert.equal(result.length,5000);assert.equal(yields,49);
+});
+
+test('folds an Android service shadow into its real contact without changing name or notes',()=>{
+  const candidates=prepareDeviceContactRows([
+    {key:'real',name:'بوجابر',notes:'ملاحظة حرفية  ',phones:[{number:'+965666530276',label:'mobile'}]},
+    {key:'service-shadow',name:'+965666530276',notes:'',phones:[{number:'+965666530276',label:'Messages'}]},
+  ],[]);
+  assert.equal(candidates.length,1);assert.equal(candidates[0]!.key,'real');assert.equal(candidates[0]!.name,'بوجابر');
+  assert.equal(candidates[0]!.notes,'ملاحظة حرفية  ');assert.equal(candidates[0]!.phones.length,1);assert.deepEqual(candidates[0]!.phones[0]!.batchContactKeys,['real']);
+});
+
+test('does not merge two genuinely named phone contacts that share a number',()=>{
+  const candidates=prepareDeviceContactRows([{key:'a',name:'الأول',phones:[{number:'5555 1234'}]},{key:'b',name:'الثاني',phones:[{number:'+96555551234'}]}],[]);
+  assert.equal(candidates.length,2);assert.deepEqual(candidates[0]!.phones[0]!.batchContactKeys,['a','b']);
+});
+
+test('chunked preparation can be cancelled when the import screen unmounts',async()=>{
+  const inputs=Array.from({length:250},(_,index)=>({key:`c${index}`,name:`Contact ${index}`,phones:[{number:`+1202${String(1000000+index)}`}]}));let cancelled=false;
+  await assert.rejects(()=>prepareDeviceContactRowsChunked(inputs,[],100,async()=>{cancelled=true},()=>cancelled),DevicePreparationCancelledError);
 });
 
 test('database preflight chunks large parameter sets below SQLite variable limits',()=>{
