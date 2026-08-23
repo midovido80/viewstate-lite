@@ -6,7 +6,7 @@ Date: 2026-08-23
 
 - Isolated Expo 54 project with Android package `com.viewstate.lite`
 - Arabic-first light V001 shell and native tab navigation
-- LITE-03 Simplicity Correction / V0.5.4 including the V0.5.3 interaction-reliability fixes
+- LITE-03 Property Draft Lifecycle Fix / V0.5.5 including all V0.5.4 simplicity and V0.5.3 interaction-reliability fixes
 - Local SQLite v5 schema with additive, versioned migrations
 - Multiple phone numbers per person with one Primary number
 - `contact_phones` as the authoritative source and `contacts.phone` as a transitional Primary mirror

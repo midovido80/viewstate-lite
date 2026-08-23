@@ -3,11 +3,11 @@ import {readFileSync} from 'node:fs';
 import test from 'node:test';
 import {BACKUP_FORMAT_VERSION,DATABASE_SCHEMA_VERSION} from '../src/lib/databaseContracts.ts';
 
-test('V0.5.4 keeps database and backup contracts frozen',()=>{
+test('V0.5.5 keeps database and backup contracts frozen',()=>{
   const pkg=JSON.parse(readFileSync('package.json','utf8'));const app=JSON.parse(readFileSync('app.json','utf8'));
-  assert.equal(pkg.version,'0.5.4');assert.equal(app.expo.version,'0.5.4');assert.equal(app.expo.android.versionCode,12);
+  assert.equal(pkg.version,'0.5.5');assert.equal(app.expo.version,'0.5.5');assert.equal(app.expo.android.versionCode,13);
   assert.equal(DATABASE_SCHEMA_VERSION,5);assert.equal(BACKUP_FORMAT_VERSION,2);
-  assert.match(readFileSync('app/(tabs)/more.tsx','utf8'),/Simplicity Correction · V0\.5\.4/);
+  assert.match(readFileSync('app/(tabs)/more.tsx','utf8'),/Property Draft Fix · V0\.5\.5/);
 });
 
 test('property save is guarded, keyboard-safe, draft-safe, and preserves edit creation time',()=>{
