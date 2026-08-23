@@ -12,6 +12,7 @@ import {normalizePhone} from '@/lib/phone';
 import type {Contact,ContactPhone,ContactRole} from '@/types/domain';
 import {colors,radius,spacing} from '@/theme/tokens';
 import {getRoleLabel,useI18n} from '@/i18n/I18nContext';
+import {useDraftAutosave} from '@/hooks/useDraftAutosave';
 
 const roles:ContactRole[]=['tenant','owner','broker','real_estate_company','building_guard'];
 type PhoneDraft={key:string;id?:string;display:string;label:string;isPrimary:boolean};
@@ -25,7 +26,7 @@ export default function ContactForm(){
   useEffect(()=>{void(async()=>{if(id){const [item,phones]=await Promise.all([contactsRepository.get(id),phoneRepository.listForContact(id)]);if(item){setExisting(item);setForm({name:item.name,
       phones:phones.map(phone=>({key:phone.id,id:phone.id,display:phone.display,label:phone.label,isPrimary:phone.isPrimary})),role:item.role,notes:item.notes})}}
     else{const draft=await draftsRepository.load<Draft>(key);if(draft?.phones?.length)setForm(draft)}setReady(true)})()},[id,key]);
-  useEffect(()=>{if(ready)void draftsRepository.save(key,form)},[form,key,ready]);
+  const draftAutosave=useDraftAutosave({enabled:ready,key,value:form,save:draftsRepository.save});
 
   const updatePhone=(keyValue:string,change:Partial<PhoneDraft>)=>setForm(old=>({...old,phones:old.phones.map(phone=>phone.key===keyValue?{...phone,...change}:phone)}));
   const choosePrimary=(keyValue:string)=>setForm(old=>({...old,phones:old.phones.map(phone=>({...phone,isPrimary:phone.key===keyValue}))}));
@@ -51,11 +52,11 @@ export default function ContactForm(){
     const contact:Contact={id:contactId,name:form.name.trim(),phone:primary.normalized!,role:form.role,notes:form.notes.trim(),source:existing?.source??'manual',createdAt:existing?.createdAt??now,updatedAt:now};
     const phones:ContactPhone[]=prepared.map(phone=>({id:phone.id??createId('phone'),contactId,normalized:phone.normalized!,display:phone.display,label:phone.label,
       isPrimary:phone.key===primary.key,createdAt:now,updatedAt:now}));
-    try{await contactsRepository.upsertWithPhones(contact,phones);await draftsRepository.clear(key);router.replace({pathname:'/contact-detail',params:{id:contactId}})}
+    try{await contactsRepository.upsertWithPhones(contact,phones);await draftAutosave.cancel();await draftsRepository.clear(key);router.replace({pathname:'/contact-detail',params:{id:contactId}})}
     catch(error){if(error instanceof PhoneConflictError)Alert.alert(t('phoneConflictTitle'),t('phoneConflictGeneric'));else throw error}
   };
 
-  return <SafeAreaView style={styles.page} edges={['top']}><AppHeader title={id?t('editPerson'):t('addManualPerson')}/><KeyboardAwareScrollViewCompat contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+  return <SafeAreaView style={styles.page} edges={['top']}><AppHeader title={id?t('editPerson'):t('addManualPerson')}/><KeyboardAwareScrollViewCompat contentContainerStyle={styles.content} keyboardShouldPersistTaps="always">
     <FormField label={t('name')} value={form.name} onChangeText={name=>setForm({...form,name})}/>
     <Text style={[styles.sectionLabel,{textAlign:isRTL?'right':'left'}]}>{t('phoneNumbers')}</Text>
     {form.phones.map((phone,index)=><View key={phone.key} style={styles.phoneCard}>

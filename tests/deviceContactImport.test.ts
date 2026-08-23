@@ -20,4 +20,6 @@ test('uses the normalized phone only when the device contact has no name',()=>{
 
 test('imports every usable number while preserving display values and labels',()=>{const result=prepareDevicePhones([{number:'5555 1234',label:'هاتف شخصي'},{number:'+966 50 123 4567',label:'Work'}]);assert.deepEqual(result.phones,[
   {normalized:'+96555551234',display:'5555 1234',label:'هاتف شخصي'},{normalized:'+966501234567',display:'+966 50 123 4567',label:'Work'}])});
-test('reports invalid and normalized duplicate device numbers',()=>{const result=prepareDevicePhones([{number:'bad'},{number:'5555 1234'},{number:'+96555551234'}]);assert.equal(result.invalid,1);assert.equal(result.duplicates,1);assert.equal(result.phones.length,1)});
+test('silently collapses Android service aliases for the same real number',()=>{const result=prepareDevicePhones([
+  {number:'bad'},{number:'+965 5555 1234',label:'Messages'},{number:'5555 1234',label:'Voice call'},{number:'+96555551234',label:'Mobile',isPrimary:true},
+]);assert.equal(result.invalid,1);assert.equal(result.duplicates,0);assert.deepEqual(result.phones,[{normalized:'+96555551234',display:'+96555551234',label:'Mobile'}])});
