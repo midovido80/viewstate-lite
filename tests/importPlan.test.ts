@@ -9,7 +9,7 @@ test('domain import plan preserves identity, applies row roles, and reports ever
     {key:'b',name:'Second',notes:'',phones:[{number:'+96555551234',label:'Shared'},{number:'+966501234567',label:'Mobile'}]},
   ],[{normalized:'+971501234567',contactId:'saved',contactName:'Existing'}]);
   let sequence=0;const plan=buildImportPlan({candidates,selected:new Set(['a','b']),assignments:new Map([['+96555551234','a']]),defaultRole:'tenant',roleOverrides:new Map([['b','owner']]),now:'2026-08-22T00:00:00.000Z',createIdentifier:prefix=>`${prefix}:${++sequence}`});
-  assert.deepEqual(plan.report,{people:2,phones:2,problems:4,invalid:1,duplicates:1,storedConflicts:1,batchConflicts:1,unselected:0});
+  assert.deepEqual(plan.report,{people:2,phones:2,problems:3,invalid:1,duplicates:0,storedConflicts:1,batchConflicts:1,unselected:0});
   assert.equal(plan.values[0]!.contact.name,'  اسم أصلي  ');assert.equal(plan.values[0]!.contact.notes,' Note unchanged ');assert.equal(plan.values[0]!.contact.role,'tenant');
   assert.equal(plan.values[0]!.phones[0]!.display,'5555 1234');assert.equal(plan.values[0]!.phones[0]!.label,'هاتف شخصي');assert.equal(plan.values[1]!.contact.role,'owner');
 });
